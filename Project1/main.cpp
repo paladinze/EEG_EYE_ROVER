@@ -134,8 +134,7 @@ void MotorControl() {
 			Console::WriteLine("Car Right");
 			SerialHandle->write_port(MotorHandle->right());
 		}
-		//Sleep(10);
-		Sleep(150);
+		Sleep(10); // can't be slower than this
 	}
 	
 }
@@ -361,7 +360,7 @@ void serialControl() {
 	}
 
 	while (1) {
-		if (GetAsyncKeyState(0x24) < 0) {
+		if (GetAsyncKeyState(0x24) < 0) { //Home
 			if (SerialHandle->isConnected()) {
 				Console::WriteLine("INFO: Attempt Closing Serial Port");
 				SerialHandle->close_port();
