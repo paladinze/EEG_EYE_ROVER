@@ -45,6 +45,7 @@ BtSerial* SerialHandle = new BtSerial("COM7");
 ModeState* ModeHandle = new ModeState;
 ServoState* ServoHandle = new ServoState;
 MotorState* MotorHandle = new MotorState;
+std::string teethState = "0";
 
 
 /*******************************************
@@ -96,83 +97,96 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
 Modes Description & Communication protocl
 ***********************************************************/
 /*
-*MODE1: Manual Mode (keyboard)
-*	key press control
-*MODE2: Manual Mode (Hands-free)
-*	real time control
-*MODE3: Semi-Autonoumous mode (Hands-free)
-*	point and go
-*MODE4: Autonoumous mode (GPS)
+Connection Management:
+	1.Home Key (connect/reconnect)
+Mode Switching:
+	1.Tab Key (change mode)
+
+*MODE1: real-time keyboard  <= Default mode
+	1.Camera Platform: WSAD
+	2.Rover Platfrom: arrow key 
+	3.One-time action:
+		1.sweeping: G
+		
+*MODE2: real-time handsfree
+	1.Two states:
+		1.Moving forward
+			1.reset camera position and remain static during operation
+			2.turn if "quadrant left/right" detected from Eye tracker
+		2.Observing
+			1.vehicle remain static during operation
+			2.camera follows eye movement
+			3.Sweep
+				1.Eye Blink
+	2.State Swtiching:
+		1.On/Off of a continuous muscle signal (clench teeth)
+	3.Mode Switching:
+		1.Engagement
+
+*MODE3: Assited handsfree
+	1.user observe surrounding
+	2.confirm a detination (using long-term engagement)
+	3.rover adjust and move to the postition
 */
 
 
 /***********************************************************
-*MODE1: Manual Mode (keyboard)
+*MODE1: real-time keyboard  <= Default mode
 ***********************************************************/
-void MotorControl() {
-	short esc = 0;
-	Console::WriteLine("Enable motor control");
-
+void Mode1MotorControl() {
+	Console::WriteLine("\tEnable mode1 motor control");
 	while (ModeHandle->getMode() == 1) {
-		//terminate condition
-		esc = GetAsyncKeyState(VK_ESCAPE);
 
-		//Control signal to communication signal mapping
-		if (GetAsyncKeyState(VK_UP) <0) {
-			Console::WriteLine("Car Forward");
+		if (GetAsyncKeyState(VK_UP) <0) { //arrow_up
+			Console::WriteLine("\t\tCar Forward");
 			SerialHandle->write_port(MotorHandle->forward());
 		}
-		else if (GetAsyncKeyState(VK_DOWN) <0) {
-			Console::WriteLine("Car Backward");
+		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
+			Console::WriteLine("\t\tCar Backward");
 			SerialHandle->write_port(MotorHandle->backward());
 		}
-		else if (GetAsyncKeyState(VK_LEFT) <0) {
-			Console::WriteLine("Car Left");
+		else if (GetAsyncKeyState(VK_LEFT) <0) { //arrow_left
+			Console::WriteLine("\t\tCar Left");
 			SerialHandle->write_port(MotorHandle->left());
 		}
-		else if (GetAsyncKeyState(VK_RIGHT) <0) {
-			Console::WriteLine("Car Right");
+		else if (GetAsyncKeyState(VK_RIGHT) <0) { //arrow_right
+			Console::WriteLine("\t\tCar Right");
 			SerialHandle->write_port(MotorHandle->right());
 		}
 		Sleep(10); // can't be slower than this
 	}
-	
 }
 
-void ServoControl() {
-	short esc = 0;
-	Console::WriteLine("Enable servo control");
+void Mode1ServoControl() {
+	Console::WriteLine("\tEnable mode1 servo control");
 	while (ModeHandle->getMode() == 1) {
-		//terminate condition
-		esc = GetAsyncKeyState(VK_ESCAPE);
-
 		if (GetAsyncKeyState(0x52) <0) {//Reset (R)
 			SerialHandle->write_port(ServoHandle->reset());
-			Console::WriteLine("CAM Reset");
+			Console::WriteLine("\t\tCAM Reset");
 		} 
 		else if (GetAsyncKeyState(0x47) <0) {//sweep (G)
 			SerialHandle->write_port(ServoHandle->sweep());
-			Console::WriteLine("CAM Sweep");
+			Console::WriteLine("\t\tCAM Sweep");
 		}
 		else if (GetAsyncKeyState(0x57) <0) {//W
 			SerialHandle->write_port(ServoHandle->setY(60));
-			Console::WriteLine("CAM UP");
+			Console::WriteLine("\t\tCAM UP");
 		}
 		else if (GetAsyncKeyState(0x53) <0) {//S
 			SerialHandle->write_port(ServoHandle->setY(20));
-			Console::WriteLine("CAM DOWN");
+			Console::WriteLine("\t\tCAM DOWN");
 		}
 		else if (GetAsyncKeyState(0x41) <0) {//A
 			for (int i = 0; i < 1; i++) {
 				SerialHandle->write_port(ServoHandle->setX(60));
 			}
-			Console::WriteLine("CAM LEFT");
+			Console::WriteLine("\t\tCAM LEFT");
 		}
 		else if (GetAsyncKeyState(0x44) <0) {//D
 			for (int i = 0; i < 1; i++) {
 				SerialHandle->write_port(ServoHandle->setX(130));
 			}
-			Console::WriteLine("CAM RIGHT");
+			Console::WriteLine("\t\tCAM RIGHT");
 		}
 		Sleep(120);
 	}
@@ -180,13 +194,10 @@ void ServoControl() {
 }
 
 
-
-
-
 /***********************************************************
-*MODE2: Manual Mode (Hands-free)
+*MODE2:real-time handsfree
 ***********************************************************/
-void EegControl() {
+void Mode2RealTimeControl() {
 	Console::WriteLine("Enable eeg control");
 
 }
@@ -205,22 +216,26 @@ void EyeControl() {
 
 */
 	//receive from remote client
-	UdpClient^ udpClient = gcnew UdpClient(UDPPORT);
-	IPEndPoint^ ipEndPoint = gcnew IPEndPoint(IPAddress::Any, UDPPORT);
-	array<Byte> ^ receivedBytes = gcnew array<Byte>(1024);
+	//UdpClient^ udpClient = gcnew UdpClient(UDPPORT);
+	//IPEndPoint^ ipEndPoint = gcnew IPEndPoint(IPAddress::Any, UDPPORT);
+	//array<Byte> ^ receivedBytes = gcnew array<Byte>(1024);
 
 	while (1) {
-		receivedBytes = udpClient->Receive(ipEndPoint);
-		String^ receivedStr = Encoding::ASCII->GetString(receivedBytes, 0, receivedBytes->Length);
-		msclr::interop::marshal_context context;
-		std::string receivedCmd = context.marshal_as<std::string>(receivedStr);
+		//Console::WriteLine(String::Concat("This message was sent from ", ipEndPoint->Address->ToString(), " on their port number ", ipEndPoint->Port.ToString()));	
+		//Console::WriteLine(receivedStr);
 
-		Console::WriteLine(String::Concat("This message was sent from ", ipEndPoint->Address->ToString(), " on their port number ", ipEndPoint->Port.ToString()));
-		
+		if (teethState == "1") { //arrow_up
+			Console::WriteLine("\t\tCar Forward");
+			SerialHandle->write_port(MotorHandle->forward());
+		}
+		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
+			Console::WriteLine("\t\tCar Backward");
+			SerialHandle->write_port(MotorHandle->backward());
+		}
+		Sleep(50); // can't be slower than this
 
 
-		Console::WriteLine(receivedStr);
-
+		/*
 		if (receivedCmd == "Quadrant Up") {//W
 			//SerialHandle->write_port('Mw');
 			Console::WriteLine("CAM UP");
@@ -244,16 +259,26 @@ void EyeControl() {
 		else if (receivedCmd == "Gaze point lost") {
 			Console::WriteLine("Gaze Data Lost");
 		}
+		*/
 
 	}	
 }
 
 
+/***********************************************************
+*MODE3:assisted handsfree
+***********************************************************/
+void Mode3AssistedControl() {
+	Console::WriteLine("welcome to mode3, which is not implemented yet");
+
+
+
+}
+
 
 /***********************************************************
 Fan Services
 ***********************************************************/
-
 void ServoSweep() {
 	int minX = ServoState::minX;
 	int maxX = ServoState::maxX;
@@ -286,69 +311,66 @@ Mode Management
 void modeControl() {
 
 	bool started = false;
-
 	while (1) {
 
+		//Initalization
 		if (!started) {
 			//Default: MODE1: Manual Mode (keyboard)
 			Console::WriteLine("INFO: Enter MODE1: Manual Mode (keyboard)");
-			ThreadStart^ motorThreadDelegate = gcnew ThreadStart(&MotorControl);
-			Thread^ motorThread = gcnew Thread(motorThreadDelegate);
-			motorThread->Start();
+			ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
+			Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
+			mode1MotorThread->Start();
 
-			ThreadStart^ servoThreadDelegate = gcnew ThreadStart(&ServoControl);
-			Thread^ servoThread = gcnew Thread(servoThreadDelegate);
-			servoThread->Start();
+			ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
+			Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
+			mode1ServoThread->Start();
 
 			started = true;
 		}
 
-
+		//Mode Switching
 		if (GetAsyncKeyState(0x09) <0) {//Toggle (tab)
 			ModeHandle->toggleMode();
 			Sleep(150);
 
 			if (ModeHandle->getMode() == 1) {
-				/***********************MODE1: Manual Mode (keyboard)*************************/
-				//Manual Control (Keyboard)
-				Console::WriteLine("INFO: Enter MODE1: Manual Mode (keyboard)");
-				ThreadStart^ motorThreadDelegate = gcnew ThreadStart(&MotorControl);
-				Thread^ motorThread = gcnew Thread(motorThreadDelegate);
-				motorThread->Start();
+				/***********************MODE1: Real-time keyboard control*************************/
+				Console::WriteLine("INFO: Enter MODE1: real-time keyboard control");
+				ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
+				Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
+				mode1MotorThread->Start();
 
-				ThreadStart^ servoThreadDelegate = gcnew ThreadStart(&ServoControl);
-				Thread^ servoThread = gcnew Thread(servoThreadDelegate);
-				servoThread->Start();
+				ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
+				Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
+				mode1ServoThread->Start();
 			}
 			else if (ModeHandle->getMode() == 2) {
-				/**********************MODE2: Manual Mode (Hands-free)*************************/
-				//Real-time control
-				Console::WriteLine("INFO: Enter MODE2: Manual Mode (Hands-free)");
-				ThreadStart^ eyeThreadDelegate = gcnew ThreadStart(&EyeControl);
-				Thread^ eyeThread = gcnew Thread(eyeThreadDelegate);
-				eyeThread->Start();
+				/**********************MODE2: Real-time handsfree control*************************/
+				Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
+				ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
+				Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
+				mode2RealTimeThread->Start();
 			}
 			else if (ModeHandle->getMode() == 3) {
-				/**********************MODE3: Semi-Autonoumous mode (Hands-free)*************************/
-				//Point and Go!
-				Console::WriteLine("INFO: Enter MODE3: Semi-Autonoumous mode (Hands-free)");
-				ThreadStart^ sweepThreadDelegate = gcnew ThreadStart(&ServoSweep);
-				Thread^ sweepThread = gcnew Thread(sweepThreadDelegate);
-				sweepThread->Start();;
+				/**********************MODE3: Assited handsfree control*************************/
+				Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
+				ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&EyeControl);
+				Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
+				mode3AssistedThread->Start();;
 			}
-
-
+			else {
+				Console::WriteLine("invalid mode");
+			}
 		}
 	}
 
 }
 
-//REQ:K (disable)
-//REQ:Q (quadrant)
+
 /***********************************************************
 Connection Management
 ***********************************************************/
-void serialControl() {
+void serialConnection() {
 	//Connect to Serial Port
 	Sleep(1000);
 
@@ -379,29 +401,57 @@ void serialControl() {
 	}
 }
 
+void UDPConnection() {
+	//Connect to UDP Port
+	Sleep(3000);
+	Console::WriteLine("INFO: Attempt Connecting to UDP Port");
+
+	//receive from remote client
+	UdpClient^ udpClient = gcnew UdpClient(UDPPORT);
+	IPEndPoint^ ipEndPoint = gcnew IPEndPoint(IPAddress::Any, UDPPORT);
+	array<Byte> ^ receivedBytes = gcnew array<Byte>(1024);
+
+	while (1) {
+		receivedBytes = udpClient->Receive(ipEndPoint);
+		String^ receivedStr = Encoding::ASCII->GetString(receivedBytes, 0, receivedBytes->Length);
+		msclr::interop::marshal_context context;
+		std::string receivedCmd = context.marshal_as<std::string>(receivedStr);
+		teethState = receivedCmd;
+	}
+}
+
+
 /***********************************************************
 Main
 ***********************************************************/
 
 int main(int argc, char **argv) {
 	
-
 	/**********************Exception Handling*************************/
 	//Console Events Handling
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE);
 
-	/**********************Connection Initiation*************************/
-
-
+	/**********************Connection management*************************/
 	//serial connection management
-	ThreadStart^ serialThreadDelegate = gcnew ThreadStart(&serialControl);
+	ThreadStart^ serialThreadDelegate = gcnew ThreadStart(&serialConnection);
 	Thread^ serialThread = gcnew Thread(serialThreadDelegate);
 	serialThread->Start();
 
+	//udp connection management
+	ThreadStart^ UDPThreadDelegate = gcnew ThreadStart(&UDPConnection);
+	Thread^ UDPThread = gcnew Thread(UDPThreadDelegate);
+	UDPThread->Start();
+
+
+	/**********************Mode management*************************/
 	//mode management
 	ThreadStart^ modeThreadDelegate = gcnew ThreadStart(&modeControl);
 	Thread^ modeThread = gcnew Thread(modeThreadDelegate);
 	modeThread->Start();
+
+
+
+
 
 
 	while (1){}
