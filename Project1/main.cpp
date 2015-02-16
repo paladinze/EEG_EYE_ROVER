@@ -14,6 +14,7 @@ Include
 #include "ModeState.h"
 #include "ServoState.h"
 #include "MotorState.h"
+#include "SensorComm.h"
 #include <string>
 #include <cstdlib>
 #include <stdio.h>
@@ -45,8 +46,7 @@ BtSerial* SerialHandle = new BtSerial("COM7");
 ModeState* ModeHandle = new ModeState;
 ServoState* ServoHandle = new ServoState;
 MotorState* MotorHandle = new MotorState;
-std::string teethState = "0";
-
+SensorComm* SensorHandle = new SensorComm;
 
 /*******************************************
 Exeeption Handling
@@ -198,12 +198,6 @@ void Mode1ServoControl() {
 *MODE2:real-time handsfree
 ***********************************************************/
 void Mode2RealTimeControl() {
-	Console::WriteLine("Enable eeg control");
-
-}
-
-
-void EyeControl() {
 	Console::WriteLine("Enable eye control");
 
 /*	//send to remote client
@@ -213,53 +207,50 @@ void EyeControl() {
 		array<Byte>^sendBytes = Encoding::ASCII->GetBytes("Is anybody there?");
 		RemoteClient->Send
 	}
-
 */
-	//receive from remote client
-	//UdpClient^ udpClient = gcnew UdpClient(UDPPORT);
-	//IPEndPoint^ ipEndPoint = gcnew IPEndPoint(IPAddress::Any, UDPPORT);
-	//array<Byte> ^ receivedBytes = gcnew array<Byte>(1024);
 
 	while (1) {
 		//Console::WriteLine(String::Concat("This message was sent from ", ipEndPoint->Address->ToString(), " on their port number ", ipEndPoint->Port.ToString()));	
 		//Console::WriteLine(receivedStr);
 
-		if (teethState == "1") { //arrow_up
+		if (SensorHandle->eegTeethState == "1") { 
+			Console::WriteLine("\tMovement State");
 			Console::WriteLine("\t\tCar Forward");
 			SerialHandle->write_port(MotorHandle->forward());
+
 		}
-		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
-			Console::WriteLine("\t\tCar Backward");
-			SerialHandle->write_port(MotorHandle->backward());
+		else if (SensorHandle->eegTeethState == "0") {
+			Console::WriteLine("\tObservation State"); 
+			if (SensorHandle->eyeQuadrant == "w") {//W
+				SerialHandle->write_port(ServoHandle->setY(60));
+				Console::WriteLine("CAM UP");
+			}
+			else if (SensorHandle->eyeQuadrant == "s") {//S
+				SerialHandle->write_port(ServoHandle->setY(20));
+				Console::WriteLine("CAM DOWN");
+			}
+			else if (SensorHandle->eyeQuadrant == "a") {//A
+				for (int i = 0; i < 1; i++) {
+					SerialHandle->write_port(ServoHandle->setX(60));
+				}
+				Console::WriteLine("CAM LEFT");
+			}
+			else if (SensorHandle->eyeQuadrant == "d") {//D
+				for (int i = 0; i < 1; i++) {
+					SerialHandle->write_port(ServoHandle->setX(130));
+				}
+				Console::WriteLine("CAM RIGHT");
+			}
+			else if (SensorHandle->eyeQuadrant == "N") {
+				Console::WriteLine("CAM Neutral");
+			}
+			else if (SensorHandle->eyeQuadrant == "0") {
+				Console::WriteLine("Gaze Data Lost");
+			}
+
+
 		}
 		Sleep(50); // can't be slower than this
-
-
-		/*
-		if (receivedCmd == "Quadrant Up") {//W
-			//SerialHandle->write_port('Mw');
-			Console::WriteLine("CAM UP");
-		}
-		else if (receivedCmd == "Quadrant Down") {//S
-			//SerialHandle->write_port('Ms');
-			Console::WriteLine("CAM DOWN");
-		}
-		else if (receivedCmd == "Quadrant Left") {//A
-			for (int i = 0; i < 1; i++) {
-				//SerialHandle->write_port('Ma');
-			}
-			Console::WriteLine("CAM LEFT");
-		}
-		else if (receivedCmd == "Quadrant Right") {//D
-			for (int i = 0; i < 1; i++) {
-				//SerialHandle->write_port('Md');
-			}
-			Console::WriteLine("CAM RIGHT");
-		}
-		else if (receivedCmd == "Gaze point lost") {
-			Console::WriteLine("Gaze Data Lost");
-		}
-		*/
 
 	}	
 }
@@ -269,7 +260,7 @@ void EyeControl() {
 *MODE3:assisted handsfree
 ***********************************************************/
 void Mode3AssistedControl() {
-	Console::WriteLine("welcome to mode3, which is not implemented yet");
+	Console::WriteLine("welcome to mode3! We are too lazy to implement it");
 
 
 
@@ -312,7 +303,6 @@ void modeControl() {
 
 	bool started = false;
 	while (1) {
-
 		//Initalization
 		if (!started) {
 			//Default: MODE1: Manual Mode (keyboard)
@@ -354,7 +344,7 @@ void modeControl() {
 			else if (ModeHandle->getMode() == 3) {
 				/**********************MODE3: Assited handsfree control*************************/
 				Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
-				ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&EyeControl);
+				ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
 				Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
 				mode3AssistedThread->Start();;
 			}
@@ -371,7 +361,6 @@ void modeControl() {
 Connection Management
 ***********************************************************/
 void serialConnection() {
-	//Connect to Serial Port
 	Sleep(1000);
 
 	Console::WriteLine("INFO: Attempt Connecting to Serial Port");
@@ -402,7 +391,6 @@ void serialConnection() {
 }
 
 void UDPConnection() {
-	//Connect to UDP Port
 	Sleep(3000);
 	Console::WriteLine("INFO: Attempt Connecting to UDP Port");
 
@@ -416,7 +404,17 @@ void UDPConnection() {
 		String^ receivedStr = Encoding::ASCII->GetString(receivedBytes, 0, receivedBytes->Length);
 		msclr::interop::marshal_context context;
 		std::string receivedCmd = context.marshal_as<std::string>(receivedStr);
-		teethState = receivedCmd;
+		
+		if (receivedBytes){ 
+			//Console::WriteLine(String::Concat("This message was sent from ", ipEndPoint->Address->ToString(), " on their port number ", ipEndPoint->Port.ToString()));	
+			//Console::WriteLine(receivedStr); 	
+			SensorHandle->setState(receivedCmd);
+		}
+		else {
+			Console::WriteLine("Warning: data not recognized");
+			Sleep(500);
+		}
+
 	}
 }
 
@@ -441,21 +439,13 @@ int main(int argc, char **argv) {
 	ThreadStart^ UDPThreadDelegate = gcnew ThreadStart(&UDPConnection);
 	Thread^ UDPThread = gcnew Thread(UDPThreadDelegate);
 	UDPThread->Start();
-
-
 	/**********************Mode management*************************/
 	//mode management
 	ThreadStart^ modeThreadDelegate = gcnew ThreadStart(&modeControl);
 	Thread^ modeThread = gcnew Thread(modeThreadDelegate);
 	modeThread->Start();
 
-
-
-
-
-
 	while (1){}
-
 
 	//End Operation
 	Console::WriteLine("Exit Happily");

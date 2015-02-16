@@ -69,6 +69,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BtSerial.cpp" />
+    <ClCompile Include="EEGState.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ModeState.cpp" />
     <ClCompile Include="MotorState.cpp" />
@@ -81,6 +82,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BtSerial.h" />
+    <ClInclude Include="EEGState.h" />
     <ClInclude Include="Utility.h" />
     <ClInclude Include="ModeState.h" />
     <ClInclude Include="MotorState.h" />
