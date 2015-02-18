@@ -24,13 +24,17 @@ int ServoState::getY() { return posY; }
 
 //set state and generate serial command
 std::string ServoState::setX(int val) { 
+	posX = val;
 	return ServoState::translate(val, STILL);
 }
 std::string ServoState::setY(int val) {
+	posY = val;
 	return ServoState::translate(STILL, val);
 }
-std::string ServoState::setXY(int val_x, int val_y) {
-	return ServoState::translate(val_x, val_y);
+std::string ServoState::setXY(int valX, int valY) {
+	posX = valX;
+	posY = valY;
+	return ServoState::translate(valX, valY);
 }
 
 //set state(with offset) and generate serial command
@@ -45,8 +49,8 @@ std::string ServoState::tilt(int val){
 }
 
 //translate: x,y value => serial message
-std::string ServoState::translate(int val_x, int val_y) {
-	return (TYPE + std::to_string(val_x) + DELIMETER + std::to_string(val_y)+ENDMSG);
+std::string ServoState::translate(int valX, int valY) {
+	return (TYPE + std::to_string(valX) + DELIMETER + std::to_string(valY)+ENDMSG);
 }
 
 

@@ -1,30 +1,41 @@
 #pragma once
 #include <string>
+#include <regex>
+#include <iostream>
 #include <Windows.h>
-using namespace std;
+#include <vector>
 
 class SensorComm
 {
-public:
+private:
+
 	//EEG
-	string eegTeethState = "0";
-	string eegAttention = "0";
+	int eegTeeth = 0;
+	int eegAttention = 0;
+	int eegEyebrow = 0;
 
 	//Eye tracker
-	string eyeActive = "0"; //0,1
-	string eyeQuadrant = "N"; //w, s, a, d, N(neutral), 0(data lost) 
-	string eyeCoordinate = "0,0"; //screen coordinates
-	string eyeAngle = "0"; //angle with respect the central axis
-
+	int eyeActive = 0; //0,1
+	std::string eyeQuadrant = "n"; //w, s, a, d, n(center)
+	int eyeCoordinate[2]; //screen coordinates
+	int eyeAngle = 0; //angle with respect the central axis
+	
 public:
 	SensorComm();
 	~SensorComm();
-	void setEEGTeethState();
-	void setEEGAttention();
-	void setEyeActive();
-	void setEyeCoordinate();
-	void setEyeAngle();
-	void setState(string);
-	void translateSensorToState(string);
+
+	//set
+	void setEEGAttention(int);
+
+	//get
+	int getEEGTeeth();
+	int getEEGAttention();
+	int getEEGEyebrow();
+
+	int getEyeActive();
+	std::string getEyeQuadrant();
+	int* getEyeCoordinate();
+	int getEyeAngle();
+	void setState(std::string);
 };
 

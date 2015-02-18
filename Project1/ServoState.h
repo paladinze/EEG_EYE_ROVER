@@ -26,6 +26,9 @@ public:
 	static const int minX = 25;
 	static const int maxY = 70;
 	static const int minY = 10;
+	static const int defaultX = 95;
+	static const int defaultY = 30;
+
 
 	ServoState();
 	~ServoState();

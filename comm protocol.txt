@@ -1,0 +1,23 @@
+
+EEG:
+	1.Teeth
+		"ET0;", "ET1;"
+	2.Attention
+		"EA;"
+	3.Eyebrow
+		"EB;"
+
+Eye tracker:
+	0.status:
+		"TL" (data lost)
+	1.quadrant:
+		"TQw;","TQs;","TQa;","TQd;" "TQn;"(center)
+	2.coordinate:
+		"TC[DataX],[DataY];"
+	3.angle:
+		"TA{angle];"	
+		
+		
+Main => Eye
+	1.mode change:
+		"M1;"
