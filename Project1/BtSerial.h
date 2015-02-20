@@ -29,8 +29,9 @@ public:
 	int open_port(); //create serial handle
 	int setup_params(); //set serial handle
 	int timeout(); //set timeout setting
-	DWORD write_port(char); // write to port
-	DWORD write_port(std::string);
+	DWORD write_port(char); // write char to port
+	DWORD write_port(std::string); //write cmd to port
+	DWORD write_port(std::string, int); // write the same cmd multiple times
 	DWORD read_port(); // read from port
 	void close_port(); // close handle
 	int isConnected();

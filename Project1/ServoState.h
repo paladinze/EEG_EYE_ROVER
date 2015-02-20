@@ -24,8 +24,8 @@ public:
 	//servo operating range
 	static const int maxX = 165;
 	static const int minX = 25;
-	static const int maxY = 70;
-	static const int minY = 10;
+	static const int maxY = 70; //exclusive
+	static const int minY = 10; //exclusive
 	static const int defaultX = 95;
 	static const int defaultY = 30;
 

@@ -35,15 +35,15 @@ int BtSerial::open_port(){
 
 	if (serialPort == INVALID_HANDLE_VALUE){
 		if (GetLastError() == ERROR_FILE_NOT_FOUND){
-			printf("Error: port does not exist! \n");
+			printf("\tError: port does not exist! \n");
 		}
 		else {//handle other errors
-			printf("Error: serial connection failed \n");
+			printf("\tError: serial connection failed \n");
 		}	
 		return 0;
 	}
 	else {
-		printf("INFO: serial connection successful! \n");
+		printf("\tINFO: serial connection successful! \n");
 		return 1;
 	}
 }
@@ -53,7 +53,7 @@ int BtSerial::setup_params() {
 	DCB dcbSerialParams = { 0 };	//create DCB struct
 	dcbSerialParams.DCBlength = sizeof(dcbSerialParams);	//set DCB size	
 	if (!GetCommState(serialPort, &dcbSerialParams)) {			//get current setting 
-		printf("Error: cannot get current serial port state! \n");
+		printf("\tError: cannot get current serial port state! \n");
 		return 0;
 	}
 	dcbSerialParams.BaudRate = baudrate;
@@ -62,11 +62,11 @@ int BtSerial::setup_params() {
 	dcbSerialParams.Parity = parity;
 
 	if (!SetCommState(serialPort, &dcbSerialParams)){
-		printf("Error: cannot set serial port state! \n");
+		printf("\tError: cannot set serial port state! \n");
 		return 0;
 	}
 	else {
-		printf("INFO: set params successful \n");
+		printf("\tINFO: set params successful \n");
 		setState(1);
 		return 1;
 	}
@@ -81,11 +81,11 @@ int BtSerial::timeout() {
 	timeouts.WriteTotalTimeoutConstant = 50;
 	timeouts.WriteTotalTimeoutMultiplier = 10;
 	if (!SetCommTimeouts(serialPort, &timeouts)){
-		printf("Error: cannot set serial port timeout! \n");
+		printf("\tError: cannot set serial port timeout! \n");
 		return 0;
 	}
 	else {
-		printf("INFO: set timeout setting successful \n");
+		printf("\tINFO: set timeout setting successful \n");
 		return 1;
 	}
 }
@@ -99,7 +99,7 @@ DWORD BtSerial::write_port(char input) {
 	}
 
 	if (!WriteFile(serialPort, buffer, size_buff, &bytesWriten, NULL)){
-		printf("Error: cannot write to serial port! \n");
+		printf("\tError: cannot write to serial port! \n");
 	}
 	return bytesWriten;
 }
@@ -115,7 +115,30 @@ DWORD BtSerial::write_port(std::string inStr) {
 		buffer[0] = c;
 		//cout << c << endl;
 		if (!WriteFile(serialPort, buffer, size_buff, &bytesWriten, NULL)){
-			printf("Error: cannot write to serial port! \n");
+			printf("\tError: cannot write to serial port! \n");
+		}
+	}
+	return bytesWriten;
+}
+
+
+DWORD BtSerial::write_port(std::string inStr, int times) {
+	DWORD bytesWriten = 0;
+	const int size_buff = 1;
+	char buffer[size_buff];
+	std::string concatStr = "";
+
+	for (int i = 0; i < times; i++) {
+		concatStr = concatStr + inStr;
+	}
+
+	//cout << inStr << endl;
+
+	for (char& c : concatStr) {
+		buffer[0] = c;
+		//cout << c << endl;
+		if (!WriteFile(serialPort, buffer, size_buff, &bytesWriten, NULL)){
+			printf("\tError: cannot write to serial port! \n");
 		}
 	}
 	return bytesWriten;
@@ -130,7 +153,7 @@ DWORD BtSerial::read_port(){
 
 void BtSerial::close_port() {
 	if (serialPort != INVALID_HANDLE_VALUE) {
-		printf("INFO: serial connection closed! \n");
+		printf("\tINFO: serial connection closed! \n");
 		CloseHandle(serialPort);
 		setState(0);
 	}

@@ -136,30 +136,32 @@ Mode Switching:
 ***********************************************************/
 void Mode1MotorControl() {
 	Console::WriteLine("\tEnable mode1 motor control");
+	//int speed = 10;
+	int speed = 10;
 	while (ModeHandle->getMode() == 1) {
 
 		if (GetAsyncKeyState(VK_UP) <0) { //arrow_up
 			Console::WriteLine("\t\tCar Forward");
-			SerialHandle->write_port(MotorHandle->forward());
+			SerialHandle->write_port(MotorHandle->forward(), speed);
 		}
 		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
 			Console::WriteLine("\t\tCar Backward");
-			SerialHandle->write_port(MotorHandle->backward());
+			SerialHandle->write_port(MotorHandle->backward(), speed);
 		}
 		else if (GetAsyncKeyState(VK_LEFT) <0) { //arrow_left
 			Console::WriteLine("\t\tCar Left");
-			SerialHandle->write_port(MotorHandle->left());
+			SerialHandle->write_port(MotorHandle->left(), speed);
 		}
 		else if (GetAsyncKeyState(VK_RIGHT) <0) { //arrow_right
 			Console::WriteLine("\t\tCar Right");
-			SerialHandle->write_port(MotorHandle->right());
+			SerialHandle->write_port(MotorHandle->right(), speed);
 		}
-		Sleep(10); // can't be slower than this
+		Sleep(200); // can't be slower than this
 	}
 }
 
 void Mode1ServoControl() {
-	//Console::WriteLine("\tEnable mode1 servo control");
+	Console::WriteLine("\tEnable mode1 servo control");
 	while (ModeHandle->getMode() == 1) {
 		if (GetAsyncKeyState(0x52) <0) {//Reset (R)
 			SerialHandle->write_port(ServoHandle->reset());
@@ -189,7 +191,7 @@ void Mode1ServoControl() {
 			//SerialHandle->write_port(ServoHandle->pan(35));
 			Console::WriteLine("\t\tCAM RIGHT");
 		}
-		Sleep(120);
+		Sleep(200);
 	}
 
 }
@@ -198,91 +200,190 @@ void Mode1ServoControl() {
 /***********************************************************
 *MODE2:real-time handsfree
 ***********************************************************/
+//test eye control by predefined position
+
+
 void Mode2RealTimeControl() {
 	Console::WriteLine("\tEnable mode2 eye control");
 	Console::WriteLine("\tEnable mode2 EEG control");
+	Console::WriteLine("\tDefualt state: observation state");
+
+	int preTeeth = 0;
+	int currTeeth = 0;
+
+	std::string preDir = "n";
+	std::string currDir = "n";
 
 	while (1) {
+		//Notify the state change
+		if (preTeeth != currTeeth) {
+			cout << "state Change" << endl;
+			SensorHandle->setEEGTeethChange(1);
+		}
+		preTeeth = currTeeth;
 
-		if (SensorHandle->getEEGTeeth() == 1) { 
-			//Console::WriteLine("\tMovement State");
-
-			if (SensorHandle->getEyeQuadrant() == "a") {//A
-				for (int i = 0; i < 1; i++) {
-					SerialHandle->write_port(MotorHandle->left());
-				}
+		//Entering the state
+		if (SensorHandle->getEEGTeeth() == 1) { //Movement State
+			currTeeth = 1;
+			if (SensorHandle->getEyeQuadrant() == "a") {//A{
+				SerialHandle->write_port(MotorHandle->left());			
 				//Console::WriteLine("Eye LEFT => Car left");
 			}
 			else if (SensorHandle->getEyeQuadrant() == "d") {//D
-				for (int i = 0; i < 1; i++) {
-					SerialHandle->write_port(MotorHandle->right());
-				}
+				SerialHandle->write_port(MotorHandle->right());
 				//Console::WriteLine("Eye RIGHT => Car right");
 			}
 			else {
 				//Console::WriteLine("\t\tCar Forward");
-				SerialHandle->write_port(MotorHandle->forward());
+				//SerialHandle->write_port(MotorHandle->forward());
 			}
-
 			Sleep(50); // can't be slower than this
 		}
-		else if (SensorHandle->getEEGTeeth() == 0) {
-			//Console::WriteLine("\tObservation State"); 
-			if (SensorHandle->getEyeActive() == 0) {
-				//Console::WriteLine("Eye trakcer inactive");
+		else if (SensorHandle->getEEGTeeth() == 0) { //Observation State
+			currTeeth = 0;
+			if (SensorHandle->getEEGEyebrow() == 1) {
+				Console::WriteLine("Motor sweep");
+				SerialHandle->write_port(ServoHandle->sweep());
+				Sleep(4000);
 			}
-			else {
-				if (SensorHandle->getEEGEyebrow() == 1) {
-					//SerialHandle->write_port(ServoHandle->sweep());
-					Console::WriteLine("Motor sweep");
-					Sleep(3000);
-				}
-				else if (SensorHandle->getEyeQuadrant() == "w") {//W
+			else if (SensorHandle->getEyeActive() != 0) {
+				if (SensorHandle->getEyeQuadrant() == "w") {//W
 					if (ServoHandle->getY() > ServoHandle->defaultY) {
 					}
-					else {
-						SerialHandle->write_port(ServoHandle->tilt(+40));
+					else if (ServoHandle->getY() == ServoHandle->defaultY) {
+						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
 						Console::WriteLine("CAM UP");
 					}
+					else if (ServoHandle->getY() < ServoHandle->defaultY) {
+						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+						Console::WriteLine("CAM UP");
+					}
+					SensorHandle->setEyeQuadrant("n");
 				}
 				else if (SensorHandle->getEyeQuadrant() == "s") {//S
 					if (ServoHandle->getY() < ServoHandle->defaultY) {
 					}
-					else {
-						SerialHandle->write_port(ServoHandle->tilt(-10));
+					else if (ServoHandle->getY() == ServoHandle->defaultY) {
+						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
 						Console::WriteLine("CAM DOWN");
 					}
+					else if (ServoHandle->getY() > ServoHandle->defaultY) {
+						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+						Console::WriteLine("CAM DOWN");
+					}
+					SensorHandle->setEyeQuadrant("n");
 				}
 				else if (SensorHandle->getEyeQuadrant() == "a") {//A
 					if (ServoHandle->getX() < ServoHandle->defaultX) {
-						Console::WriteLine("CAM STATIC");
 					}
-					else {
-						SerialHandle->write_port(ServoHandle->pan(-35));
+					else if (ServoHandle->getX() == ServoHandle->defaultX) {
+						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
 						Console::WriteLine("CAM LEFT");
 					}
+					else if (ServoHandle->getX() > ServoHandle->defaultX) {
+						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+						Console::WriteLine("CAM LEFT");
+					}
+					SensorHandle->setEyeQuadrant("n");
 				}
 				else if (SensorHandle->getEyeQuadrant() == "d") {//D
 					if (ServoHandle->getX() > ServoHandle->defaultX) {
-						Console::WriteLine("CAM STATIC");
 					}
-					else {
-						SerialHandle->write_port(ServoHandle->pan(+35));
+					else if (ServoHandle->getX() == ServoHandle->defaultX) {
+						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
 						Console::WriteLine("CAM RIGHT");
 					}
+					else if (ServoHandle->getX() < ServoHandle->defaultX) {
+						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+						Console::WriteLine("CAM RIGHT");
+					}
+					SensorHandle->setEyeQuadrant("n");
 				}
-				else if (SensorHandle->getEyeQuadrant() == "n") {//Center
-					//SerialHandle->write_port(ServoHandle->reset());
-					Console::WriteLine("CAM Static");
-				}
-				Sleep(300);
+				else if (SensorHandle->getEyeQuadrant() == "n") {
+				};
+				Sleep(10);
 			}
 		}
-		
-
 	}	
 }
 
+
+/****************************version 2***************************************************/
+//test eye following 
+
+void Mode2RealTimeControlVersion2() {
+	Console::WriteLine("\tEnable mode2 eye control");
+	Console::WriteLine("\tEnable mode2 EEG control");
+	Console::WriteLine("\tDefualt state: observation state");
+
+	int preTeeth = 0;
+	int currTeeth = 0;
+	int camSpeed = 10;
+
+	while (1) {
+		//Notify the state change
+		if (preTeeth != currTeeth) {
+			cout << "state Change" << endl;
+			SensorHandle->setEEGTeethChange(1);
+		}
+		preTeeth = currTeeth;
+
+		//Entering the state
+		if (SensorHandle->getEEGTeeth() == 1) { //Movement State
+			currTeeth = 1;
+			if (SensorHandle->getEyeQuadrant() == "a") {//A{
+				SerialHandle->write_port(MotorHandle->left());
+				//Console::WriteLine("Eye LEFT => Car left");
+			}
+			else if (SensorHandle->getEyeQuadrant() == "d") {//D
+				SerialHandle->write_port(MotorHandle->right());
+				//Console::WriteLine("Eye RIGHT => Car right");
+			}
+			else {
+				//Console::WriteLine("\t\tCar Forward");
+				//SerialHandle->write_port(MotorHandle->forward());
+			}
+			Sleep(50); // can't be slower than this
+		}
+		else if (SensorHandle->getEEGTeeth() == 0) { //Observation State
+			currTeeth = 0;
+			if (SensorHandle->getEEGEyebrow() == 1) {
+				Console::WriteLine("Motor sweep");
+				SerialHandle->write_port(ServoHandle->sweep());
+				Sleep(4000);
+			}
+			else if (SensorHandle->getEyeActive() != 0) {
+				if (SensorHandle->getEyeQuadrant() == "w") {//W
+					if (ServoHandle->getY() < ServoHandle->maxY) {
+						SerialHandle->write_port(ServoHandle->tilt(+camSpeed));
+					}
+					SensorHandle->setEyeQuadrant("n");
+				}
+				else if (SensorHandle->getEyeQuadrant() == "s") {//S
+					if (ServoHandle->getY() > ServoHandle->minY) {
+						SerialHandle->write_port(ServoHandle->tilt(-camSpeed));
+					}
+					SensorHandle->setEyeQuadrant("n");
+				}
+				else if (SensorHandle->getEyeQuadrant() == "a") {//A
+					if (ServoHandle->getX() > ServoHandle->minX) {
+						SerialHandle->write_port(ServoHandle->pan(-camSpeed));
+					}
+					SensorHandle->setEyeQuadrant("n");
+				}
+				else if (SensorHandle->getEyeQuadrant() == "d") {//D
+					if (ServoHandle->getX() < ServoHandle->maxX) {
+						SerialHandle->write_port(ServoHandle->pan(+camSpeed));
+					}
+					SensorHandle->setEyeQuadrant("n");
+				}
+				else if (SensorHandle->getEyeQuadrant() == "n") {
+				};
+				Sleep(10);
+			}
+		}
+	}
+}
 
 /***********************************************************
 *MODE3:assisted handsfree
@@ -309,8 +410,8 @@ void ServoSweep() {
 	int maxX = ServoState::maxX;
 	int minY = ServoState::minY;
 	int maxY = ServoState::maxY;
-	int speed = 5;
-	int delay = 100;
+	int speed = 6;
+	int delay = 1000;
 
 	SerialHandle->write_port(ServoHandle->reset());
 	Sleep(500);
@@ -372,7 +473,7 @@ void modeControl() {
 			else if (ModeHandle->getMode() == 2) {
 				/**********************MODE2: Real-time handsfree control*************************/
 				Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
-				ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
+				ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControlVersion2);
 				Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
 				mode2RealTimeThread->Start();
 			}
@@ -391,6 +492,24 @@ void modeControl() {
 
 }
 
+void stateChangeHandler() {
+	Console::WriteLine("INFO: Enable state change detection");
+	while (1) {
+		if (SensorHandle->getEEGTeethChange() == 1) {
+			SensorHandle->setEEGTeethChange(0);
+			int eegTeethState = SensorHandle->getEEGTeeth();
+			if (eegTeethState) {
+				Console::WriteLine("\tEntering Movement State:");
+			}
+			else {
+				Console::WriteLine("\tEntering Observation State:");
+			}			
+		}
+	
+	}
+
+}
+
 
 /***********************************************************
 Connection Management
@@ -400,8 +519,8 @@ void serialConnection() {
 
 	Console::WriteLine("INFO: Attempt Connecting to Serial Port");
 	if (SerialHandle->open_port()) {
-		SerialHandle->setup_params();
-		SerialHandle->timeout();
+		//SerialHandle->setup_params();
+		//SerialHandle->timeout();
 		Beep(750, 1000);
 	}
 
@@ -415,8 +534,8 @@ void serialConnection() {
 			else {
 				Console::WriteLine("INFO: Attempt Connecting to Serial Port");
 				if (SerialHandle->open_port()) {
-					SerialHandle->setup_params();
-					SerialHandle->timeout();
+					//SerialHandle->setup_params();
+					//SerialHandle->timeout();
 					Beep(750, 1000);
 				}
 			}
@@ -426,7 +545,7 @@ void serialConnection() {
 }
 
 void UDPReceiveConnection() {
-	Sleep(3000);
+	Sleep(8000);
 	Console::WriteLine("INFO: Attempt Connecting to UDP Port");
 
 	//receive from remote client
@@ -444,6 +563,7 @@ void UDPReceiveConnection() {
 			//Console::WriteLine(String::Concat("This message was sent from ", ipEndPoint->Address->ToString(), " on their port number ", ipEndPoint->Port.ToString()));	
 			Console::WriteLine(receivedStr); 	
 			SensorHandle->setState(receivedCmd);
+			Sleep(10);
 		}
 		else {
 			Console::WriteLine("Warning: data not recognized");
@@ -496,12 +616,17 @@ int main(int argc, char **argv) {
 	//udp connection management (send)
 	ThreadStart^ UDPSendThreadDelegate = gcnew ThreadStart(&UDPSendConnection);
 	Thread^ UDPSendThread = gcnew Thread(UDPSendThreadDelegate);
-	UDPSendThread->Start();
+	//UDPSendThread->Start();
 	/**********************Mode management*************************/
 	//mode management
 	ThreadStart^ modeThreadDelegate = gcnew ThreadStart(&modeControl);
 	Thread^ modeThread = gcnew Thread(modeThreadDelegate);
 	modeThread->Start();
+
+	//handle state change
+	ThreadStart^ stateChangeThreadDelegate = gcnew ThreadStart(&stateChangeHandler);
+	Thread^ stateChangeThread = gcnew Thread(stateChangeThreadDelegate);
+	stateChangeThread->Start();
 
 	while (1){ }
 
