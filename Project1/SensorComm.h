@@ -9,14 +9,24 @@ class SensorComm
 {
 private:
 
-	//EEG
-	int eegTeeth = 0;
-	int eegAttention = 0;
-	int eegEyebrow = 0;
+	//State for Mode2
+	int moveObserveState = 0; // 0: observe; 1: move;
 
+	//EEG
+	int eegBlink = 0;
+
+	int eegTeethPrev = 0;
+	int eegTeethCurr = 0;
 	int eegTeethChange = 0;
-	int eegAttentionChange = 0;
+
 	int eegEyebrowChange = 0;
+	int eegEyebrowPrev = 0;
+	int eegEyebrowCurr = 0;
+
+	int eegAttentionChange = 0;
+	int eegAttentionPrev = 0;
+	int eegAttentionCurr = 0;
+	
 
 	//Eye tracker
 	int eyeActive = 0; //0,1
@@ -33,8 +43,12 @@ public:
 
 
 	//get
+	int getMoveObserveState();
+
 	int getEEGTeeth();
 	int getEEGTeethChange();
+
+	int getEEGBlink();
 
 	int getEEGAttention();
 	int getEEGAttentionChange();

@@ -11,13 +11,17 @@ SensorComm::~SensorComm(){
 }
 
 //Get
-int SensorComm::getEEGTeeth(){ return eegTeeth; }
+int SensorComm::getMoveObserveState(){ return moveObserveState; }
+
+int SensorComm::getEEGTeeth(){ return eegTeethCurr; }
 int SensorComm::getEEGTeethChange() { return eegTeethChange; }
 
-int SensorComm::getEEGAttention(){ return eegAttention; }
+int SensorComm::getEEGBlink(){ return eegBlink; }
+
+int SensorComm::getEEGAttention(){ return eegAttentionCurr; }
 int SensorComm::getEEGAttentionChange() { return eegAttentionChange; }
 
-int SensorComm::getEEGEyebrow(){ return eegEyebrow; }
+int SensorComm::getEEGEyebrow(){ return eegEyebrowCurr; }
 int SensorComm::getEEGEyebrowChange() { return eegEyebrowChange; }
 
 int SensorComm::getEyeActive(){ return eyeActive; }
@@ -29,13 +33,13 @@ int SensorComm::getEyeAngle(){ return eyeAngle; }
 
 
 //Set
-void SensorComm::setEEGAttention(int val){ eegAttention = val; }
+void SensorComm::setEEGAttention(int val){ eegAttentionCurr = val; }
 void SensorComm::setEEGAttentionChange(int val){ eegAttentionChange = val; }
 
-void SensorComm::setEEGTeeth(int val){ eegTeeth = val; }
+void SensorComm::setEEGTeeth(int val){ eegTeethCurr = val; }
 void SensorComm::setEEGTeethChange(int val){ eegTeethChange = val; }
 
-void SensorComm::setEEGEyebrow(int val){ eegEyebrow = val; }
+void SensorComm::setEEGEyebrow(int val){ eegEyebrowCurr = val; }
 void SensorComm::setEEGEyebrowChange(int val){ eegEyebrowChange = val; }
 
 void SensorComm::setEyeQuadrant(std::string quadrant) { eyeQuadrant = quadrant; }
@@ -54,16 +58,42 @@ void SensorComm::setState(std::string msg){
 
 		if (srcDevice == "E") {//From EEG
 			if (dataType == "T"){//EEG:Teeth
-				int state = std::stoi(data);
-				eegTeeth = state;
+				int inTeeth = std::stoi(data);
+				if (inTeeth == 1 && eegTeethCurr == 0) {
+					eegTeethChange = 1;
+				}
+				else {
+					eegTeethChange = 0;
+				}
+				eegTeethPrev = eegTeethCurr;
+				eegTeethCurr = inTeeth;
 			}
 			else if (dataType == "A") {//EEG:Attention
-				int state = std::stoi(data);
-				eegAttention = state;
+				int inAttention = std::stoi(data);
+				if (inAttention==1 && eegAttentionCurr==0) {
+					eegAttentionChange = 1;
+				}
+				else {
+					eegAttentionChange = 0;
+				}
+				eegAttentionPrev = eegAttentionCurr;
+				eegAttentionCurr = inAttention;
 			}
 			else if (dataType == "B") {//EEG:Eyebrow
-				int state = std::stoi(data);
-				eegEyebrow = state;
+				int inEyebrow = std::stoi(data);
+				if (inEyebrow == 1 && eegEyebrowCurr == 0) {
+					moveObserveState = (moveObserveState + 1) % 2;
+					eegEyebrowChange = 1;
+				}
+				else {
+					eegEyebrowChange = 0;
+				}
+				eegEyebrowPrev = eegEyebrowCurr;
+				eegEyebrowCurr = inEyebrow;
+			}
+			else if (dataType == "E") {
+				int inBlink = std::stoi(data);
+				eegBlink = inBlink;
 			}
 		}
 		else if (srcDevice == "T") {//From eye tracker
@@ -83,7 +113,7 @@ void SensorComm::setState(std::string msg){
 			else if (dataType == "A"){//EYE:Angle
 				eyeActive = 1;
 				int angle = std::stoi(data);
-				eegAttention = angle;
+				eyeAngle = angle;
 			}
 			else if (dataType == "L"){//EYE:data lost
 				eyeActive = 0;
