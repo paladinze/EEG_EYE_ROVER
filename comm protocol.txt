@@ -6,7 +6,11 @@ EEG:
 		"EA;"
 	3.Eyebrow
 		"EB;"
-
+	4.Push
+		"EP;"
+	5.Pull
+		"EL;"
+		
 Eye tracker:
 	0.status:
 		"TL" (data lost)

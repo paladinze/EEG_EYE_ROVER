@@ -250,15 +250,13 @@ void Mode2RealTimeControl(){
 	Console::WriteLine("\tEnable mode2 eye control");
 	Console::WriteLine("\tEnable mode2 EEG control");
 	Console::WriteLine("\tEntering defualt state: observation state");
-	Console::WriteLine("\Hint: Use eyebrow to switch between observation and movement state");
+	Console::WriteLine("\tHint: Use eyebrow to switch between observation and movement state");
 
 	/*
 	//move a fixed length on change
 	int motorDelay = 10;
 	int motorSpeed = 10;
 	*/
-	int motorDelay = 10;
-	int motorSpeed = 15;
 	
 
 	while (ModeHandle->getMode() == 2) {
@@ -275,14 +273,18 @@ void Mode2RealTimeControl(){
 
 		if (SensorHandle->getMoveObserveState() == 1) { //movement state
 			if (SensorHandle->getEyeQuadrant() == "a") { //motor left
-				SerialHandle->write_port(MotorHandle->left());
+				int motorDelay = 100;
+				SerialHandle->write_port(MotorHandle->left(),10);
 				Sleep(motorDelay);
 			}
 			else if (SensorHandle->getEyeQuadrant() == "d") {//motor right
-				SerialHandle->write_port(MotorHandle->right());
+				int motorDelay = 100;
+				SerialHandle->write_port(MotorHandle->right(),10);
 				Sleep(motorDelay);
 			}
 			else if (SensorHandle->getEEGTeethChange() == 1) {//motor forward
+				int motorDelay = 10;
+				int motorSpeed = 15;
 				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
 				SensorHandle->setEEGTeethChange(0);
 				Sleep(motorDelay);
@@ -290,10 +292,12 @@ void Mode2RealTimeControl(){
 
 		}
 		else if (SensorHandle->getMoveObserveState() == 0) { //Observation state
+			int camDelay = 100;
 			
-			if (SensorHandle->getEEGBlink() == 1) {
+			if (SensorHandle->getEEGPushChange() == 3) {// disable eeg push
 				Console::WriteLine("Motor sweep");
 				SerialHandle->write_port(ServoHandle->sweep());
+				SensorHandle->setEEGPushChange(0);
 				Sleep(4000);
 			}
 			else if (SensorHandle->getEyeActive() != 0) {
@@ -302,10 +306,12 @@ void Mode2RealTimeControl(){
 					}
 					else if (ServoHandle->getY() == ServoHandle->defaultY) {
 						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
+						Sleep(camDelay);
 						Console::WriteLine("CAM UP");
 					}
 					else if (ServoHandle->getY() < ServoHandle->defaultY) {
 						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+						Sleep(camDelay);
 						Console::WriteLine("CAM UP");
 					}
 					SensorHandle->setEyeQuadrant("n");
@@ -315,10 +321,12 @@ void Mode2RealTimeControl(){
 					}
 					else if (ServoHandle->getY() == ServoHandle->defaultY) {
 						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
+						Sleep(camDelay);
 						Console::WriteLine("CAM DOWN");
 					}
 					else if (ServoHandle->getY() > ServoHandle->defaultY) {
 						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+						Sleep(camDelay);
 						Console::WriteLine("CAM DOWN");
 					}
 					SensorHandle->setEyeQuadrant("n");
@@ -328,10 +336,12 @@ void Mode2RealTimeControl(){
 					}
 					else if (ServoHandle->getX() == ServoHandle->defaultX) {
 						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
+						Sleep(camDelay);
 						Console::WriteLine("CAM LEFT");
 					}
 					else if (ServoHandle->getX() > ServoHandle->defaultX) {
 						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+						Sleep(camDelay);
 						Console::WriteLine("CAM LEFT");
 					}
 					SensorHandle->setEyeQuadrant("n");
@@ -341,10 +351,12 @@ void Mode2RealTimeControl(){
 					}
 					else if (ServoHandle->getX() == ServoHandle->defaultX) {
 						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
+						Sleep(camDelay);
 						Console::WriteLine("CAM RIGHT");
 					}
 					else if (ServoHandle->getX() < ServoHandle->defaultX) {
 						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+						Sleep(camDelay);
 						Console::WriteLine("CAM RIGHT");
 					}
 					SensorHandle->setEyeQuadrant("n");
@@ -680,6 +692,11 @@ void stateChangeHandler() {
 	Console::WriteLine("INFO: Enable state change detection");
 	while (1) {
 
+		if (SensorHandle->getEEGPullChange() == 1) {
+			Console::WriteLine("Pull but do nothing");
+			SensorHandle->setEEGPullChange(0);
+		}
+
 		/*
 		if (SensorHandle->getEEGTeethChange() == 1) {
 			SensorHandle->setEEGTeethChange(0);
@@ -763,7 +780,7 @@ void UDPSendConnection() {
 
 	UdpClient^ udpClientSend = gcnew UdpClient;
 	//udpClientSend->Connect("138.51.234.242", 2); //BA LAB
-	udpClientSend->Connect("192.168.0.104", 2);
+	udpClientSend->Connect("138.51.224.231", 2);
 	//udpClientSend->Connect("localhost",2);
 	while (1) { 
 		//trigger if a change in mode

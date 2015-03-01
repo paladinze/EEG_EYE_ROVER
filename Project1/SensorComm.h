@@ -13,7 +13,13 @@ private:
 	int moveObserveState = 0; // 0: observe; 1: move;
 
 	//EEG
-	int eegBlink = 0;
+	int eegPushCurr = 0;
+	int eegPushPrev = 0;
+	int eegPushChange = 0;
+
+	int eegPullCurr = 0;
+	int eegPullPrev = 0;
+	int eegPullChange = 0;
 
 	int eegTeethPrev = 0;
 	int eegTeethCurr = 0;
@@ -50,6 +56,12 @@ public:
 
 	int getEEGBlink();
 
+	int getEEGPush();
+	int getEEGPushChange();
+
+	int getEEGPull();
+	int getEEGPullChange();
+
 	int getEEGAttention();
 	int getEEGAttentionChange();
 
@@ -64,6 +76,12 @@ public:
 	int getEyeAngle();
 
 	//set
+	void setEEGPush(int);
+	void setEEGPushChange(int);
+
+	void setEEGPull(int);
+	void setEEGPullChange(int);
+
 	void setEEGAttention(int);
 	void setEEGAttentionChange(int);
 
