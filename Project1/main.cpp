@@ -137,31 +137,31 @@ Mode Switching:
 void Mode1MotorControl() {
 	Console::WriteLine("\tEnable mode1 motor control");
 	//int speed = 10;
-	int speed = 5;
+	int speedForward = 5;
+	int speedTurn = 4;
 	int motorDelay = 100;
 	while (ModeHandle->getMode() == 1) {
 
 		if (GetAsyncKeyState(VK_UP) <0) { //arrow_up
 			Console::WriteLine("\t\tCar Forward");
-			SerialHandle->write_port(MotorHandle->forward(), speed);
+			SerialHandle->write_port(MotorHandle->forward(), speedForward);
 			Sleep(motorDelay);
 		}
 		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
 			Console::WriteLine("\t\tCar Backward");
-			SerialHandle->write_port(MotorHandle->backward(), speed);
+			SerialHandle->write_port(MotorHandle->backward(), speedForward);
 			Sleep(motorDelay);
 		}
 		else if (GetAsyncKeyState(VK_LEFT) <0) { //arrow_left
 			Console::WriteLine("\t\tCar Left");
-			SerialHandle->write_port(MotorHandle->left(), speed);
+			SerialHandle->write_port(MotorHandle->left(), speedTurn);
 			Sleep(motorDelay);
 		}
 		else if (GetAsyncKeyState(VK_RIGHT) <0) { //arrow_right
 			Console::WriteLine("\t\tCar Right");
-			SerialHandle->write_port(MotorHandle->right(), speed);
+			SerialHandle->write_port(MotorHandle->right(), speedTurn);
 			Sleep(motorDelay);
 		}
-		//Sleep(200); // can't be slower than this
 	}
 }
 
@@ -262,6 +262,17 @@ void Mode2RealTimeControl(){
 	while (ModeHandle->getMode() == 2) {
 
 		if (SensorHandle->getEEGEyebrowChange() == 1) {
+
+			//Reset camera on state change
+			//SerialHandle->write_port(ServoHandle->reset());
+			//reset to look down
+			SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+			SerialHandle->write_port(ServoHandle->setY(ServoHandle->minY));
+
+
+			Sleep(300);
+			Console::WriteLine("\t\tCAM Reset");
+
 			if (SensorHandle->getMoveObserveState() == 0){
 				Console::WriteLine("\tEntering observation state");
 			}
@@ -274,21 +285,35 @@ void Mode2RealTimeControl(){
 		if (SensorHandle->getMoveObserveState() == 1) { //movement state
 			if (SensorHandle->getEyeQuadrant() == "a") { //motor left
 				int motorDelay = 100;
-				SerialHandle->write_port(MotorHandle->left(),10);
+				int motorSpeed = 10;
+				SerialHandle->write_port(MotorHandle->left(),motorSpeed);
+				SensorHandle->setEyeQuadrant("n");
 				Sleep(motorDelay);
 			}
 			else if (SensorHandle->getEyeQuadrant() == "d") {//motor right
 				int motorDelay = 100;
-				SerialHandle->write_port(MotorHandle->right(),10);
+				int motorSpeed = 10;
+				SerialHandle->write_port(MotorHandle->right(),motorSpeed);
+				SensorHandle->setEyeQuadrant("n");
 				Sleep(motorDelay);
 			}
+			else if (SensorHandle->getEEGTeeth() == 1) {
+				int motorDelay = 40;
+				int motorSpeed = 1;
+				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
+				Sleep(motorDelay);
+			}
+
+			/*
 			else if (SensorHandle->getEEGTeethChange() == 1) {//motor forward
-				int motorDelay = 10;
+				int motorDelay = 100;
 				int motorSpeed = 15;
 				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
 				SensorHandle->setEEGTeethChange(0);
 				Sleep(motorDelay);
 			}
+
+			*/
 
 		}
 		else if (SensorHandle->getMoveObserveState() == 0) { //Observation state
@@ -780,7 +805,8 @@ void UDPSendConnection() {
 
 	UdpClient^ udpClientSend = gcnew UdpClient;
 	//udpClientSend->Connect("138.51.234.242", 2); //BA LAB
-	udpClientSend->Connect("138.51.224.231", 2);
+	//udpClientSend->Connect("138.51.224.231", 2);
+	udpClientSend->Connect("100.64.223.168", 2);
 	//udpClientSend->Connect("localhost",2);
 	while (1) { 
 		//trigger if a change in mode
