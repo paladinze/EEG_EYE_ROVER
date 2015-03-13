@@ -10,23 +10,41 @@ ModeState::~ModeState(){
 }
 
 int ModeState::getMode(){
-	return mode;
+	return modeCurr;
+}
+
+int ModeState::getChange(){
+	return modeChange;
+}
+
+void ModeState::setChange(int val) {
+	modeChange = val;
 }
 
 void ModeState::setMode(int val) {
-	mode = val;
-}
+	modePrev = modeCurr;
+	modeCurr = val;
+	if (modeCurr != modePrev)
+	{
+		modeChange = 1;
+		cout << "INFO: mode change to " << modeCurr << endl;
+	}
+	else {
+		modeChange = 0;
+	}
 
-void ModeState::setMode(std::string inStr){
-	mode = ModeState::toMode(inStr);
-}
-
-int ModeState::toMode(std::string inStr) {
-	return 0;
 }
 
 void ModeState::toggleMode() {
-	mode = (mode % 3) + 1;
-	cout << "INFO: mode change to " << mode << endl;
+	modePrev = modeCurr;
+	modeCurr = (modeCurr % 3) + 1;
+	if (modeCurr != modePrev)
+	{
+		modeChange = 1;
+		cout << "INFO: mode change to " << modeCurr << endl;
+	}
+	else {
+		modeChange = 0;
+	}
 }
 

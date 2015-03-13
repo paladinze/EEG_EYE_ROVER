@@ -8,17 +8,21 @@ using namespace std;
 class ModeState
 {
 private:
-	int mode = 1;
+	int modeCurr = 1;
+	int modePrev = 1;
+	int modeChange = 0;
 
 public:
 	ModeState();
 	~ModeState();
-	
+
 	int getMode();
+	int getChange();
+	void setChange(int);
 	void setMode(int);
 	void setMode(std::string);
 	void toggleMode();
-	static int toMode(std::string);
+
 
 };
 

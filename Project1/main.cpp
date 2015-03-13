@@ -136,7 +136,6 @@ Mode Switching:
 ***********************************************************/
 void Mode1MotorControl() {
 	Console::WriteLine("\tEnable mode1 motor control");
-	//int speed = 10;
 	int speedForward = 5;
 	int speedTurn = 4;
 	int motorDelay = 100;
@@ -162,6 +161,7 @@ void Mode1MotorControl() {
 			SerialHandle->write_port(MotorHandle->right(), speedTurn);
 			Sleep(motorDelay);
 		}
+		Sleep(100);
 	}
 }
 
@@ -235,6 +235,7 @@ void Mode1ServoControl() {
 				Console::WriteLine("CAM RIGHT");
 			}
 		}
+		Sleep(100);
 	}
 }
 
@@ -656,84 +657,59 @@ void ServoSweep() {
 Mode Management
 ***********************************************************/
 void modeControl() {
+	int started = 0;
+	//Declare Thread Delegate
+	ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
+	Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
+	ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
+	Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
+	ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
+	Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
+	ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
+	Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
 
-	bool started = false;
 	while (1) {
-		//Initalization
-		if (!started) {
-			//Default: MODE1: Manual Mode (keyboard)
-			Console::WriteLine("INFO: Enter MODE1: Manual Mode (keyboard)");
-			ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
-			Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
-			mode1MotorThread->Start();
+		//update mode
+		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention
+			ModeHandle->toggleMode();
+			SensorHandle->setEEGAttentionChange(0);
+			Sleep(150);//prevent fast switching
+		}
 
-			ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
-			Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
-			mode1ServoThread->Start();
-
-			started = true;
+		if (GetAsyncKeyState(0x31) < 0) {
+			ModeHandle->setMode(1);
+		}
+		else if (GetAsyncKeyState(0x32) < 0)
+		{
+			ModeHandle->setMode(2);
+		}
+		else if (GetAsyncKeyState(0x33) < 0) {
+			ModeHandle->setMode(3);
 		}
 
 		//Mode Switching
-		if (( GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention
-			ModeHandle->toggleMode();
-			SensorHandle->setEEGAttentionChange(0);
-			Sleep(150);
-
-			if (ModeHandle->getMode() == 1) {
-				/***********************MODE1: Real-time keyboard control*************************/
-				Console::WriteLine("INFO: Enter MODE1: real-time keyboard control");
-				ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
-				Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
-				mode1MotorThread->Start();
-
-				ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
-				Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
-				mode1ServoThread->Start();
-			}
-			else if (ModeHandle->getMode() == 2) {
-				/**********************MODE2: Real-time handsfree control*************************/
-				Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
-				ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
-				Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
-				mode2RealTimeThread->Start();
-			}
-			else if (ModeHandle->getMode() == 3) {
-				/**********************MODE3: Assited handsfree control*************************/
-				Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
-				ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
-				Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
-				mode3AssistedThread->Start();;
-			}
-			else {
-				Console::WriteLine("invalid mode");
-			}
+		if (!started || (ModeHandle->getChange() && ModeHandle->getMode() == 1)) {
+			/***********************MODE1: Real-time keyboard control*************************/
+			Console::WriteLine("INFO: Enter MODE1: real-time keyboard control");
+			mode1MotorThread->Start();
+			mode1ServoThread->Start();
+			ModeHandle->setChange(0);
+			started = 1;
 		}
-	}
-
-}
-
-void stateChangeHandler() {
-	Console::WriteLine("INFO: Enable state change detection");
-	while (1) {
-
-		if (SensorHandle->getEEGPullChange() == 1) {
-			Console::WriteLine("Pull but do nothing");
-			SensorHandle->setEEGPullChange(0);
+		else if (ModeHandle->getChange() && ModeHandle->getMode() == 2) {
+			/**********************MODE2: Real-time handsfree control*************************/
+			Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
+			//mode2RealTimeThread->Start();
+			ModeHandle->setChange(0);
+		}
+		else if (ModeHandle->getChange() && ModeHandle->getMode() == 3) {
+			/**********************MODE3: Assited handsfree control*************************/
+			Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
+			//mode3AssistedThread->Start();
+			ModeHandle->setChange(0);
 		}
 
-		/*
-		if (SensorHandle->getEEGTeethChange() == 1) {
-			SensorHandle->setEEGTeethChange(0);
-			int eegTeethState = SensorHandle->getEEGTeeth();
-			if (eegTeethState) {
-				Console::WriteLine("\tEntering Movement State:");
-			}
-			else {
-				Console::WriteLine("\tEntering Observation State:");
-			}			
-		}
-		*/
+		Sleep(100);
 	}
 
 }
@@ -769,6 +745,7 @@ void serialConnection() {
 			}
 			Sleep(150);
 		}
+		Sleep(100);
 	}
 }
 
@@ -797,6 +774,7 @@ void UDPReceiveConnection() {
 			Console::WriteLine("Warning: data not recognized");
 			Sleep(500);
 		}
+		Sleep(100);
 
 	}
 }
@@ -816,6 +794,7 @@ void UDPSendConnection() {
 			udpClientSend->Send(sendBytes, sendBytes->Length);
 			//Console::WriteLine("Mode Change Sent");
 		}
+		Sleep(100);
 	}
 	
 }
@@ -853,10 +832,6 @@ int main(int argc, char **argv) {
 	Thread^ modeThread = gcnew Thread(modeThreadDelegate);
 	modeThread->Start();
 
-	//handle state change
-	ThreadStart^ stateChangeThreadDelegate = gcnew ThreadStart(&stateChangeHandler);
-	Thread^ stateChangeThread = gcnew Thread(stateChangeThreadDelegate);
-	stateChangeThread->Start();
 
 	while (1){ }
 
