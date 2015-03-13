@@ -15,6 +15,7 @@ Include
 #include "ServoState.h"
 #include "MotorState.h"
 #include "SensorComm.h"
+#include "GameController.h"
 #include <string>
 #include <vector>
 #include <cstdlib>
@@ -48,6 +49,7 @@ ModeState* ModeHandle = new ModeState;
 ServoState* ServoHandle = new ServoState;
 MotorState* MotorHandle = new MotorState;
 SensorComm* SensorHandle = new SensorComm;
+GameController GamepadHandle;
 
 /*******************************************
 Exeeption Handling
@@ -136,30 +138,54 @@ Mode Switching:
 ***********************************************************/
 void Mode1MotorControl() {
 	Console::WriteLine("\tEnable mode1 motor control");
-	int speedForward = 5;
+	int speedForward = 4;
 	int speedTurn = 4;
-	int motorDelay = 100;
+	int motorDelay = 0;
+	float joystickThres = 0.5;
 	while (ModeHandle->getMode() == 1) {
-
-		if (GetAsyncKeyState(VK_UP) <0) { //arrow_up
-			Console::WriteLine("\t\tCar Forward");
-			SerialHandle->write_port(MotorHandle->forward(), speedForward);
-			Sleep(motorDelay);
+		if (GamepadHandle.isConnected) {
+			if (GamepadHandle.ry_thumb > joystickThres) { //arrow_up
+				Console::WriteLine("\t\tCar Forward");
+				SerialHandle->write_port(MotorHandle->forward(), speedForward);
+				Sleep(motorDelay);
+			}
+			else if (GamepadHandle.ry_thumb < -joystickThres) { //arrow_down
+				Console::WriteLine("\t\tCar Backward");
+				SerialHandle->write_port(MotorHandle->backward(), speedForward);
+				Sleep(motorDelay);
+			}
+			else if (GamepadHandle.rx_thumb < -joystickThres) { //arrow_left
+				Console::WriteLine("\t\tCar Left");
+				SerialHandle->write_port(MotorHandle->left(), speedTurn);
+				Sleep(motorDelay);
+			}
+			else if (GamepadHandle.rx_thumb > joystickThres) { //arrow_right
+				Console::WriteLine("\t\tCar Right");
+				SerialHandle->write_port(MotorHandle->right(), speedTurn);
+				Sleep(motorDelay);
+			}
 		}
-		else if (GetAsyncKeyState(VK_DOWN) <0) { //arrow_down
-			Console::WriteLine("\t\tCar Backward");
-			SerialHandle->write_port(MotorHandle->backward(), speedForward);
-			Sleep(motorDelay);
-		}
-		else if (GetAsyncKeyState(VK_LEFT) <0) { //arrow_left
-			Console::WriteLine("\t\tCar Left");
-			SerialHandle->write_port(MotorHandle->left(), speedTurn);
-			Sleep(motorDelay);
-		}
-		else if (GetAsyncKeyState(VK_RIGHT) <0) { //arrow_right
-			Console::WriteLine("\t\tCar Right");
-			SerialHandle->write_port(MotorHandle->right(), speedTurn);
-			Sleep(motorDelay);
+		else {
+			if (GetAsyncKeyState(VK_UP) < 0) { //arrow_up
+				Console::WriteLine("\t\tCar Forward");
+				SerialHandle->write_port(MotorHandle->forward(), speedForward);
+				Sleep(motorDelay);
+			}
+			else if (GetAsyncKeyState(VK_DOWN) < 0) { //arrow_down
+				Console::WriteLine("\t\tCar Backward");
+				SerialHandle->write_port(MotorHandle->backward(), speedForward);
+				Sleep(motorDelay);
+			}
+			else if (GetAsyncKeyState(VK_LEFT) < 0) { //arrow_left
+				Console::WriteLine("\t\tCar Left");
+				SerialHandle->write_port(MotorHandle->left(), speedTurn);
+				Sleep(motorDelay);
+			}
+			else if (GetAsyncKeyState(VK_RIGHT) < 0) { //arrow_right
+				Console::WriteLine("\t\tCar Right");
+				SerialHandle->write_port(MotorHandle->right(), speedTurn);
+				Sleep(motorDelay);
+			}
 		}
 		Sleep(100);
 	}
@@ -168,73 +194,105 @@ void Mode1MotorControl() {
 void Mode1ServoControl() {
 	Console::WriteLine("\tEnable mode1 servo control");
 	int camDelay = 300;
+	float joystickThres = 0;
+	float maxSpeed = 3;
+	float realSpeed = 0;
 	while (ModeHandle->getMode() == 1) {
-		if (GetAsyncKeyState(0x52) <0) {//Reset (R)
-			SerialHandle->write_port(ServoHandle->reset());
-			Sleep(camDelay);
-			Console::WriteLine("\t\tCAM Reset");
-		}
-		else if (GetAsyncKeyState(0x47) <0) {//sweep (G)
-			SerialHandle->write_port(ServoHandle->sweep());
-			Sleep(camDelay);
-			Console::WriteLine("\t\tCAM Sweep");
-		}
-		else if (GetAsyncKeyState(0x57) <0) {//cam up
-			if (ServoHandle->getY() > ServoHandle->defaultY) {
-			}
-			else if (ServoHandle->getY() == ServoHandle->defaultY) {
-				SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
-				Sleep(camDelay);
+		
+		if (GamepadHandle.isConnected) {
+			//Servo: gamepad left joystick
+			if (GamepadHandle.ly_thumb > joystickThres) { //arrow_up
 				Console::WriteLine("CAM UP");
+				realSpeed = maxSpeed * GamepadHandle.ly_thumb;
+				SerialHandle->write_port(ServoHandle->tilt((int)round(realSpeed)));
 			}
-			else if (ServoHandle->getY() < ServoHandle->defaultY) {
-				SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-				Sleep(camDelay);
-				Console::WriteLine("CAM UP");
-			}
-		}
-		else if (GetAsyncKeyState(0x53) <0) {//cam down
-			if (ServoHandle->getY() < ServoHandle->defaultY) {
-			}
-			else if (ServoHandle->getY() == ServoHandle->defaultY) {
-				SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
-				Sleep(camDelay);
+			else if (GamepadHandle.ly_thumb < -joystickThres) { //arrow_down
 				Console::WriteLine("CAM DOWN");
+				realSpeed = maxSpeed * GamepadHandle.ly_thumb;
+				SerialHandle->write_port(ServoHandle->tilt((int)round(realSpeed)));
 			}
-			else if (ServoHandle->getY() > ServoHandle->defaultY) {
-				SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-				Sleep(camDelay);
-				Console::WriteLine("CAM DOWN");
-			}
-		}
-		else if (GetAsyncKeyState(0x41) <0) {//cam left
-			if (ServoHandle->getX() < ServoHandle->defaultX) {
-			}
-			else if (ServoHandle->getX() == ServoHandle->defaultX) {
-				SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
-				Sleep(camDelay);
+			else if (GamepadHandle.lx_thumb < -joystickThres) { //arrow_left
 				Console::WriteLine("CAM LEFT");
+				realSpeed = maxSpeed * GamepadHandle.lx_thumb;
+				SerialHandle->write_port(ServoHandle->pan((int)round(realSpeed)));
 			}
-			else if (ServoHandle->getX() > ServoHandle->defaultX) {
-				SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-				Sleep(camDelay);
-				Console::WriteLine("CAM LEFT");
+			else if (GamepadHandle.lx_thumb > joystickThres) { //arrow_right
+				Console::WriteLine("CAM RIGHT");
+				realSpeed = maxSpeed * GamepadHandle.lx_thumb;
+				SerialHandle->write_port(ServoHandle->pan((int)round(realSpeed)));
 			}
 		}
-		else if (GetAsyncKeyState(0x44) <0) {//cam right
-			if (ServoHandle->getX() > ServoHandle->defaultX) {
-			}
-			else if (ServoHandle->getX() == ServoHandle->defaultX) {
-				SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
+		else {
+			//Servo: keyboard
+			if (GetAsyncKeyState(0x52) < 0) {//Reset (R)
+				SerialHandle->write_port(ServoHandle->reset());
 				Sleep(camDelay);
-				Console::WriteLine("CAM RIGHT");
+				Console::WriteLine("\t\tCAM Reset");
 			}
-			else if (ServoHandle->getX() < ServoHandle->defaultX) {
-				SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+			else if (GetAsyncKeyState(0x47) < 0) {//sweep (G)
+				SerialHandle->write_port(ServoHandle->sweep());
 				Sleep(camDelay);
-				Console::WriteLine("CAM RIGHT");
+				Console::WriteLine("\t\tCAM Sweep");
 			}
+			else if (GetAsyncKeyState(0x57) <0) {//cam up
+				if (ServoHandle->getY() > ServoHandle->defaultY) {
+				}
+				else if (ServoHandle->getY() == ServoHandle->defaultY) {
+					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
+					Sleep(camDelay);
+					Console::WriteLine("CAM UP");
+				}
+				else if (ServoHandle->getY() < ServoHandle->defaultY) {
+					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+					Sleep(camDelay);
+					Console::WriteLine("CAM UP");
+				}
+			}
+			else if (GetAsyncKeyState(0x53) < 0) {//cam down
+				if (ServoHandle->getY() < ServoHandle->defaultY) {
+				}
+				else if (ServoHandle->getY() == ServoHandle->defaultY) {
+					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
+					Sleep(camDelay);
+					Console::WriteLine("CAM DOWN");
+				}
+				else if (ServoHandle->getY() > ServoHandle->defaultY) {
+					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
+					Sleep(camDelay);
+					Console::WriteLine("CAM DOWN");
+				}
+			}
+			else if (GetAsyncKeyState(0x41) < 0) {//cam left
+				if (ServoHandle->getX() < ServoHandle->defaultX) {
+				}
+				else if (ServoHandle->getX() == ServoHandle->defaultX) {
+					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
+					Sleep(camDelay);
+					Console::WriteLine("CAM LEFT");
+				}
+				else if (ServoHandle->getX() > ServoHandle->defaultX) {
+					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+					Sleep(camDelay);
+					Console::WriteLine("CAM LEFT");
+				}
+			}
+			else if (GetAsyncKeyState(0x44) <0) {//cam right
+				if (ServoHandle->getX() > ServoHandle->defaultX) {
+				}
+				else if (ServoHandle->getX() == ServoHandle->defaultX) {
+					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
+					Sleep(camDelay);
+					Console::WriteLine("CAM RIGHT");
+				}
+				else if (ServoHandle->getX() < ServoHandle->defaultX) {
+					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
+					Sleep(camDelay);
+					Console::WriteLine("CAM RIGHT");
+				}
+			}
+
 		}
+
 		Sleep(100);
 	}
 }
@@ -658,32 +716,21 @@ Mode Management
 ***********************************************************/
 void modeControl() {
 	int started = 0;
-	//Declare Thread Delegate
-	ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
-	Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
-	ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
-	Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
-	ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
-	Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
-	ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
-	Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
 
 	while (1) {
 		//update mode
-		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention
+		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention || gamepadY
 			ModeHandle->toggleMode();
 			SensorHandle->setEEGAttentionChange(0);
 			Sleep(150);//prevent fast switching
-		}
-
-		if (GetAsyncKeyState(0x31) < 0) {
+		}else if (GetAsyncKeyState(0x31) < 0 || GamepadHandle.a_button_pressed) {//num key 1 || gamepadA
 			ModeHandle->setMode(1);
 		}
-		else if (GetAsyncKeyState(0x32) < 0)
+		else if (GetAsyncKeyState(0x32) < 0 || GamepadHandle.b_button_pressed)//num key 2 || gamepadB
 		{
 			ModeHandle->setMode(2);
 		}
-		else if (GetAsyncKeyState(0x33) < 0) {
+		else if (GetAsyncKeyState(0x33) < 0 || GamepadHandle.y_button_pressed) {//num key 3 || gamepadY
 			ModeHandle->setMode(3);
 		}
 
@@ -691,7 +738,11 @@ void modeControl() {
 		if (!started || (ModeHandle->getChange() && ModeHandle->getMode() == 1)) {
 			/***********************MODE1: Real-time keyboard control*************************/
 			Console::WriteLine("INFO: Enter MODE1: real-time keyboard control");
+			ThreadStart^ mode1MotorThreadDelegate = gcnew ThreadStart(&Mode1MotorControl);
+			Thread^ mode1MotorThread = gcnew Thread(mode1MotorThreadDelegate);
 			mode1MotorThread->Start();
+			ThreadStart^ mode1ServoThreadDelegate = gcnew ThreadStart(&Mode1ServoControl);
+			Thread^ mode1ServoThread = gcnew Thread(mode1ServoThreadDelegate);
 			mode1ServoThread->Start();
 			ModeHandle->setChange(0);
 			started = 1;
@@ -699,12 +750,16 @@ void modeControl() {
 		else if (ModeHandle->getChange() && ModeHandle->getMode() == 2) {
 			/**********************MODE2: Real-time handsfree control*************************/
 			Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
+			//ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
+			//Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
 			//mode2RealTimeThread->Start();
 			ModeHandle->setChange(0);
 		}
 		else if (ModeHandle->getChange() && ModeHandle->getMode() == 3) {
 			/**********************MODE3: Assited handsfree control*************************/
 			Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
+			ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
+			Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
 			//mode3AssistedThread->Start();
 			ModeHandle->setChange(0);
 		}
@@ -799,6 +854,22 @@ void UDPSendConnection() {
 	
 }
 
+/***********************************************************
+Xinput support (gamepad)
+***********************************************************/
+void gamepadControl() {
+	while (1) {
+		GamepadHandle.update();
+
+		//vibrate on mode change
+		if (GamepadHandle.a_button_pressed || GamepadHandle.b_button_pressed || GamepadHandle.x_button_pressed || GamepadHandle.y_button_pressed)
+			GamepadHandle.vibrate(2);
+
+
+
+		Sleep(100);
+	}
+}
 
 
 /***********************************************************
@@ -831,7 +902,11 @@ int main(int argc, char **argv) {
 	ThreadStart^ modeThreadDelegate = gcnew ThreadStart(&modeControl);
 	Thread^ modeThread = gcnew Thread(modeThreadDelegate);
 	modeThread->Start();
-
+	/**********************Xinput Support*************************/
+	//xbox controller
+	ThreadStart^ gamepadThreadDelegate = gcnew ThreadStart(&gamepadControl);
+	Thread^ gamepadThread = gcnew Thread(gamepadThreadDelegate);
+	gamepadThread->Start();
 
 	while (1){ }
 

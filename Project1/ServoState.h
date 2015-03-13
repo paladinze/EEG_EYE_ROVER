@@ -1,13 +1,11 @@
 #pragma once
 #include <iostream>
 #include <string>
-#include <Windows.h>
-using namespace std;
+#include <algorithm>
 
 #define INITIAL_X 95
 #define INITIAL_Y 30
 
-//message format: S34,67;
 const std::string TYPE = "S";
 const std::string DELIMETER = ",";
 const std::string ENDMSG = ";";
