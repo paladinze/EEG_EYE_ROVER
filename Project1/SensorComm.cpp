@@ -10,6 +10,8 @@ SensorComm::~SensorComm(){
 
 }
 
+void SensorComm::toggleMoveObserveState() { moveObserveState = (moveObserveState + 1) % 2; }
+
 //Get
 int SensorComm::getMoveObserveState(){ return moveObserveState; }
 
@@ -38,6 +40,8 @@ int SensorComm::getEyeAngle(){ return eyeAngle; }
 
 
 //Set
+void SensorComm::setMoveObserveState(int val){ moveObserveState = val; }
+
 void SensorComm::setEEGPull(int val){ eegPullCurr = val; }
 void SensorComm::setEEGPullChange(int val){ eegPullChange = val; }
 

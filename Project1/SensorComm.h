@@ -46,7 +46,7 @@ public:
 	SensorComm();
 	~SensorComm();
 
-
+	void toggleMoveObserveState();
 
 	//get
 	int getMoveObserveState();
@@ -76,6 +76,7 @@ public:
 	int getEyeAngle();
 
 	//set
+	void setMoveObserveState(int);
 	void setEEGPush(int);
 	void setEEGPushChange(int);
 

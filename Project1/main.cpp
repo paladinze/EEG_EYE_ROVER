@@ -321,23 +321,15 @@ void Mode2RealTimeControl(){
 	Console::WriteLine("\tEntering defualt state: observation state");
 	Console::WriteLine("\tHint: Use eyebrow to switch between observation and movement state");
 
-	/*
-	//move a fixed length on change
-	int motorDelay = 10;
-	int motorSpeed = 10;
-	*/
-	
-
 	while (ModeHandle->getMode() == 2) {
 
-		if (SensorHandle->getEEGEyebrowChange() == 1) {
+		if (SensorHandle->getEEGEyebrowChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {
 
 			//Reset camera on state change
 			//SerialHandle->write_port(ServoHandle->reset());
 			//reset to look down
 			SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
 			SerialHandle->write_port(ServoHandle->setY(ServoHandle->minY));
-
 
 			Sleep(300);
 			Console::WriteLine("\t\tCAM Reset");
@@ -372,18 +364,6 @@ void Mode2RealTimeControl(){
 				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
 				Sleep(motorDelay);
 			}
-
-			/*
-			else if (SensorHandle->getEEGTeethChange() == 1) {//motor forward
-				int motorDelay = 100;
-				int motorSpeed = 15;
-				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
-				SensorHandle->setEEGTeethChange(0);
-				Sleep(motorDelay);
-			}
-
-			*/
-
 		}
 		else if (SensorHandle->getMoveObserveState() == 0) { //Observation state
 			int camDelay = 100;
@@ -472,7 +452,7 @@ void Mode2RealTimeControl(){
 *MODE3:assisted handsfree
 ***********************************************************/
 void Mode3AssistedControl() {
-	Console::WriteLine("welcome to mode3! We are too lazy to implement it");
+	Console::WriteLine("welcome to mode3! We need more coffee and time");
 
 	/*procedure (basic version)
 		0.Initialization
@@ -489,14 +469,7 @@ void Mode3AssistedControl() {
 		4.
 		5.
 	
-	
-	
-	
-	
 	*/
-
-
-
 
 
 	while (ModeHandle->getMode() == 3) {
@@ -548,7 +521,7 @@ void modeControl() {
 
 	while (1) {
 		//update mode
-		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention || gamepadY
+		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention 
 			ModeHandle->toggleMode();
 			SensorHandle->setEEGAttentionChange(0);
 			Sleep(150);//prevent fast switching
@@ -561,6 +534,12 @@ void modeControl() {
 		}
 		else if (GetAsyncKeyState(0x33) < 0 || GamepadHandle.y_button_pressed) {//num key 3 || gamepadY
 			ModeHandle->setMode(3);
+		}
+
+		//update state (if in mode 2: the hands-free mode)
+		if (ModeHandle->getMode() == 2 && (GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed)) { // key T || gamepadX
+			SensorHandle->toggleMoveObserveState();
+			Sleep(150);
 		}
 
 		//Mode Switching
@@ -579,9 +558,9 @@ void modeControl() {
 		else if (ModeHandle->getChange() && ModeHandle->getMode() == 2) {
 			/**********************MODE2: Real-time handsfree control*************************/
 			Console::WriteLine("INFO: Enter MODE2: real-time handsfree control");
-			//ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
-			//Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
-			//mode2RealTimeThread->Start();
+			ThreadStart^ mode2RealTimeThreadDelegate = gcnew ThreadStart(&Mode2RealTimeControl);
+			Thread^ mode2RealTimeThread = gcnew Thread(mode2RealTimeThreadDelegate);
+			mode2RealTimeThread->Start();
 			ModeHandle->setChange(0);
 		}
 		else if (ModeHandle->getChange() && ModeHandle->getMode() == 3) {
@@ -668,7 +647,7 @@ void UDPSendConnection() {
 	UdpClient^ udpClientSend = gcnew UdpClient;
 	//udpClientSend->Connect("138.51.234.242", 2); //BA LAB
 	//udpClientSend->Connect("138.51.224.231", 2);
-	udpClientSend->Connect("100.64.223.168", 2);
+	udpClientSend->Connect("100.64.215.76", 2);
 	//udpClientSend->Connect("localhost",2);
 	while (1) { 
 		//trigger if a change in mode
@@ -693,8 +672,6 @@ void gamepadControl() {
 		//vibrate on mode change
 		if (GamepadHandle.a_button_pressed || GamepadHandle.b_button_pressed || GamepadHandle.x_button_pressed || GamepadHandle.y_button_pressed)
 			GamepadHandle.vibrate(2);
-
-
 
 		Sleep(100);
 	}
