@@ -12,6 +12,16 @@ private:
 	//State for Mode2
 	int moveObserveState = 0; // 0: observe; 1: move;
 
+	//Gyro
+	int gyXCurr = 0;
+	int gyXPre = 0;
+	int gyXChange = 0;
+
+	//int 
+	int gyYCurr = 0;
+	int gyYPre = 0;
+	int gyYChange = 0;
+
 	//EEG
 	int eegPushCurr = 0;
 	int eegPushPrev = 0;
@@ -51,6 +61,12 @@ public:
 	//get
 	int getMoveObserveState();
 
+	int getGyroX();
+	int getGyroXChange();
+
+	int getGyroY();
+	int getGyroYChange();
+
 	int getEEGTeeth();
 	int getEEGTeethChange();
 
@@ -77,6 +93,13 @@ public:
 
 	//set
 	void setMoveObserveState(int);
+
+	void setGyroX(int);
+	void setGyroXChange(int);
+
+	void setGyroY(int);
+	void setGyroYChange(int);
+
 	void setEEGPush(int);
 	void setEEGPushChange(int);
 

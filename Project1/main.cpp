@@ -5,7 +5,12 @@
 *	2.Serial Communication
 *Author: Ze Cheng
 *Liscence: Public Domain
+
+
+/***********************************************************
+Modes Description & Communication protocl
 ***********************************************************/
+//TODO:add description
 
 /***********************************************************
 Include
@@ -44,7 +49,7 @@ Global Varaibles
 
 //const int UDPPORT = 11000;
 const int UDPPORT = 1;
-BtSerial* SerialHandle = new BtSerial("COM7");
+BtSerial* SerialHandle = new BtSerial("\\\\.\\COM14");
 ModeState* ModeHandle = new ModeState;
 ServoState* ServoHandle = new ServoState;
 MotorState* MotorHandle = new MotorState;
@@ -95,44 +100,6 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
 }
 
 
-
-/***********************************************************
-Modes Description & Communication protocl
-***********************************************************/
-/*
-Connection Management:
-	1.Home Key (connect/reconnect)
-Mode Switching:
-	1.Tab Key (change mode)
-
-*MODE1: real-time keyboard  <= Default mode
-	1.Camera Platform: WSAD
-	2.Rover Platfrom: arrow key 
-	3.One-time action:
-		1.sweeping: G
-		
-*MODE2: real-time handsfree
-	1.Two states:
-		1.Moving forward
-			1.reset camera position and remain static during operation
-			2.turn if "quadrant left/right" detected from Eye tracker
-		2.Observing
-			1.vehicle remain static during operation
-			2.camera follows eye movement
-			3.Sweep
-				1.Eye Blink
-	2.State Swtiching:
-		1.On/Off of a continuous muscle signal (clench teeth)
-	3.Mode Switching:
-		1.Engagement
-
-*MODE3: Assited handsfree
-	1.user observe surrounding
-	2.confirm a detination (using long-term engagement)
-	3.rover adjust and move to the postition
-*/
-
-
 /***********************************************************
 *MODE1: real-time keyboard  <= Default mode
 ***********************************************************/
@@ -164,6 +131,11 @@ void Mode1MotorControl() {
 				SerialHandle->write_port(MotorHandle->right(), speedTurn);
 				Sleep(motorDelay);
 			}
+			else if (GamepadHandle.x_button_pressed){
+				Console::WriteLine("\t\tCar Assisted");
+				SerialHandle->write_port(MotorHandle->assisted(),1);
+				Sleep(motorDelay);
+			}
 		}
 		else {
 			if (GetAsyncKeyState(VK_UP) < 0) { //arrow_up
@@ -186,6 +158,11 @@ void Mode1MotorControl() {
 				SerialHandle->write_port(MotorHandle->right(), speedTurn);
 				Sleep(motorDelay);
 			}
+			else if (GetAsyncKeyState(0x58) < 0) { //x: sonar assisted
+				Console::WriteLine("\t\tCar Sonar Assisted");
+				SerialHandle->write_port(MotorHandle->assisted(), 1);
+				Sleep(motorDelay);
+			}
 		}
 		Sleep(100);
 	}
@@ -193,9 +170,10 @@ void Mode1MotorControl() {
 
 void Mode1ServoControl() {
 	Console::WriteLine("\tEnable mode1 servo control");
-	int camDelay = 300;
+	int camDelay = 0;
 	float joystickThres = 0;
-	float maxSpeed = 10;
+	float maxJoySpeed = 5;
+	float maxKeySpeed = 5;
 	float realSpeed = 0;
 	while (ModeHandle->getMode() == 1) {
 		
@@ -213,22 +191,22 @@ void Mode1ServoControl() {
 			}
 			else if (GamepadHandle.ly_thumb > joystickThres) { //arrow_up
 				Console::WriteLine("CAM UP");
-				realSpeed = maxSpeed * GamepadHandle.ly_thumb;
+				realSpeed = maxJoySpeed * GamepadHandle.ly_thumb;
 				SerialHandle->write_port(ServoHandle->tilt((int)round(realSpeed)));
 			}
 			else if (GamepadHandle.ly_thumb < -joystickThres) { //arrow_down
 				Console::WriteLine("CAM DOWN");
-				realSpeed = maxSpeed * GamepadHandle.ly_thumb;
+				realSpeed = maxJoySpeed * GamepadHandle.ly_thumb;
 				SerialHandle->write_port(ServoHandle->tilt((int)round(realSpeed)));
 			}
 			else if (GamepadHandle.lx_thumb < -joystickThres) { //arrow_left
 				Console::WriteLine("CAM LEFT");
-				realSpeed = maxSpeed * GamepadHandle.lx_thumb;
+				realSpeed = maxJoySpeed * GamepadHandle.lx_thumb;
 				SerialHandle->write_port(ServoHandle->pan((int)round(realSpeed)));
 			}
 			else if (GamepadHandle.lx_thumb > joystickThres) { //arrow_right
 				Console::WriteLine("CAM RIGHT");
-				realSpeed = maxSpeed * GamepadHandle.lx_thumb;
+				realSpeed = maxJoySpeed * GamepadHandle.lx_thumb;
 				SerialHandle->write_port(ServoHandle->pan((int)round(realSpeed)));
 			}
 		}
@@ -244,61 +222,25 @@ void Mode1ServoControl() {
 				Sleep(camDelay);
 				Console::WriteLine("\t\tCAM Sweep");
 			}
-			else if (GetAsyncKeyState(0x57) <0) {//cam up
-				if (ServoHandle->getY() > ServoHandle->defaultY) {
-				}
-				else if (ServoHandle->getY() == ServoHandle->defaultY) {
-					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
-					Sleep(camDelay);
-					Console::WriteLine("CAM UP");
-				}
-				else if (ServoHandle->getY() < ServoHandle->defaultY) {
-					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-					Sleep(camDelay);
-					Console::WriteLine("CAM UP");
-				}
+			else if (GetAsyncKeyState(0x53) <0) {//cam down
+				SerialHandle->write_port(ServoHandle->tilt(maxKeySpeed));
+				Sleep(camDelay);
+				Console::WriteLine("CAM DOWN");
 			}
-			else if (GetAsyncKeyState(0x53) < 0) {//cam down
-				if (ServoHandle->getY() < ServoHandle->defaultY) {
-				}
-				else if (ServoHandle->getY() == ServoHandle->defaultY) {
-					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
-					Sleep(camDelay);
-					Console::WriteLine("CAM DOWN");
-				}
-				else if (ServoHandle->getY() > ServoHandle->defaultY) {
-					SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-					Sleep(camDelay);
-					Console::WriteLine("CAM DOWN");
-				}
+			else if (GetAsyncKeyState(0x57) < 0) {//cam up
+				SerialHandle->write_port(ServoHandle->tilt(-maxKeySpeed));
+				Sleep(camDelay);
+				Console::WriteLine("CAM UP");
 			}
 			else if (GetAsyncKeyState(0x41) < 0) {//cam left
-				if (ServoHandle->getX() < ServoHandle->defaultX) {
-				}
-				else if (ServoHandle->getX() == ServoHandle->defaultX) {
-					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
-					Sleep(camDelay);
-					Console::WriteLine("CAM LEFT");
-				}
-				else if (ServoHandle->getX() > ServoHandle->defaultX) {
-					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-					Sleep(camDelay);
-					Console::WriteLine("CAM LEFT");
-				}
+				SerialHandle->write_port(ServoHandle->pan(-maxKeySpeed));
+				Sleep(camDelay);
+				Console::WriteLine("CAM LEFT");
 			}
 			else if (GetAsyncKeyState(0x44) <0) {//cam right
-				if (ServoHandle->getX() > ServoHandle->defaultX) {
-				}
-				else if (ServoHandle->getX() == ServoHandle->defaultX) {
-					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
-					Sleep(camDelay);
-					Console::WriteLine("CAM RIGHT");
-				}
-				else if (ServoHandle->getX() < ServoHandle->defaultX) {
-					SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-					Sleep(camDelay);
-					Console::WriteLine("CAM RIGHT");
-				}
+				SerialHandle->write_port(ServoHandle->pan(maxKeySpeed));
+				Sleep(camDelay);
+				Console::WriteLine("CAM RIGHT");
 			}
 
 		}
@@ -312,39 +254,37 @@ void Mode1ServoControl() {
 /***********************************************************
 *MODE2:real-time handsfree
 ***********************************************************/
-//test eye control by predefined position
-
 
 void Mode2RealTimeControl(){
+	Console::WriteLine("\Entering Mode2: real-time control");
 	Console::WriteLine("\tEnable mode2 eye control");
 	Console::WriteLine("\tEnable mode2 EEG control");
 	Console::WriteLine("\tEntering defualt state: observation state");
-	Console::WriteLine("\tHint: Use eyebrow to switch between observation and movement state");
 
 	while (ModeHandle->getMode() == 2) {
+		/******************************handle mode change: modeX => mode2******************************/
+		if (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {//Key T or gamepadX or GyroY
 
-		if (SensorHandle->getEEGEyebrowChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {
-
-			//Reset camera on state change
-			//SerialHandle->write_port(ServoHandle->reset());
-			//reset to look down
-			SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-			SerialHandle->write_port(ServoHandle->setY(ServoHandle->minY));
-
+			//Reset camera to look down
+			SerialHandle->write_port(ServoHandle->setX(ServoHandle->initX));
+			SerialHandle->write_port(ServoHandle->setY(ServoHandle->maxY));
 			Sleep(300);
 			Console::WriteLine("\t\tCAM Reset");
 
+			//Print current state
 			if (SensorHandle->getMoveObserveState() == 0){
 				Console::WriteLine("\tEntering observation state");
 			}
 			else {
 				Console::WriteLine("\tEntering movement state");
 			}
-			SensorHandle->setEEGEyebrowChange(0);
+			SensorHandle->setGyroYChange(0);
 		}
 
-		if (SensorHandle->getMoveObserveState() == 1) { //movement state
+		/******************************handle state: movement state******************************/ //(motor and servo needs adjust)
+		if (SensorHandle->getMoveObserveState() == 1) { 
 			if (SensorHandle->getEyeQuadrant() == "a") { //motor left
+				Console::WriteLine("\t\tCar Left");
 				int motorDelay = 100;
 				int motorSpeed = 10;
 				SerialHandle->write_port(MotorHandle->left(),motorSpeed);
@@ -352,94 +292,64 @@ void Mode2RealTimeControl(){
 				Sleep(motorDelay);
 			}
 			else if (SensorHandle->getEyeQuadrant() == "d") {//motor right
+				Console::WriteLine("\t\tCar Right");
 				int motorDelay = 100;
 				int motorSpeed = 10;
 				SerialHandle->write_port(MotorHandle->right(),motorSpeed);
 				SensorHandle->setEyeQuadrant("n");
 				Sleep(motorDelay);
 			}
-			else if (SensorHandle->getEEGTeeth() == 1) {
+			else if (SensorHandle->getEEGEyebrow() == 1) {//motor forward
+				Console::WriteLine("\t\tCar Forward");
 				int motorDelay = 40;
 				int motorSpeed = 1;
 				SerialHandle->write_port(MotorHandle->forward(), motorSpeed);
 				Sleep(motorDelay);
+			} 
+			else if (SensorHandle->getEEGPushChange()){// motor backward
+				Console::WriteLine("\t\tCar Backward");
+				int motorDelay = 40;
+				int motorSpeed = 1;
+				SerialHandle->write_port(MotorHandle->backward(), motorSpeed);
+				Sleep(motorDelay);
 			}
 		}
-		else if (SensorHandle->getMoveObserveState() == 0) { //Observation state
-			int camDelay = 100;
+
+		/******************************handle state: Observation state******************************/
+		else if (SensorHandle->getMoveObserveState() == 0) { 
+			int camDelay = 50;
+			int camSpeed = 1;
 			
-			if (SensorHandle->getEEGPushChange() == 3) {// disable eeg push
-				Console::WriteLine("Motor sweep");
+			if (SensorHandle->getGyroXChange() == 1) {//cam sweep: head horizontal movement
+				Console::WriteLine("Camera sweep");
 				SerialHandle->write_port(ServoHandle->sweep());
-				SensorHandle->setEEGPushChange(0);
+				SensorHandle->setGyroXChange(0);
 				Sleep(4000);
 			}
-			else if (SensorHandle->getEyeActive() != 0) {
-				if (SensorHandle->getEyeQuadrant() == "w") {//cam up
-					if (ServoHandle->getY() > ServoHandle->defaultY) {
-					}
-					else if (ServoHandle->getY() == ServoHandle->defaultY) {
-						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY + 25));
-						Sleep(camDelay);
-						Console::WriteLine("CAM UP");
-					}
-					else if (ServoHandle->getY() < ServoHandle->defaultY) {
-						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-						Sleep(camDelay);
-						Console::WriteLine("CAM UP");
-					}
-					SensorHandle->setEyeQuadrant("n");
-				}
-				else if (SensorHandle->getEyeQuadrant() == "s") {//cam down
-					if (ServoHandle->getY() < ServoHandle->defaultY) {
-					}
-					else if (ServoHandle->getY() == ServoHandle->defaultY) {
-						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY - 15));
-						Sleep(camDelay);
-						Console::WriteLine("CAM DOWN");
-					}
-					else if (ServoHandle->getY() > ServoHandle->defaultY) {
-						SerialHandle->write_port(ServoHandle->setY(ServoHandle->defaultY));
-						Sleep(camDelay);
-						Console::WriteLine("CAM DOWN");
-					}
-					SensorHandle->setEyeQuadrant("n");
-				}
-				else if (SensorHandle->getEyeQuadrant() == "a") {//cam left
-					if (ServoHandle->getX() < ServoHandle->defaultX) {
-					}
-					else if (ServoHandle->getX() == ServoHandle->defaultX) {
-						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX - 35));
-						Sleep(camDelay);
-						Console::WriteLine("CAM LEFT");
-					}
-					else if (ServoHandle->getX() > ServoHandle->defaultX) {
-						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-						Sleep(camDelay);
-						Console::WriteLine("CAM LEFT");
-					}
-					SensorHandle->setEyeQuadrant("n");
-				}
-				else if (SensorHandle->getEyeQuadrant() == "d") {//cam right
-					if (ServoHandle->getX() > ServoHandle->defaultX) {
-					}
-					else if (ServoHandle->getX() == ServoHandle->defaultX) {
-						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX + 35));
-						Sleep(camDelay);
-						Console::WriteLine("CAM RIGHT");
-					}
-					else if (ServoHandle->getX() < ServoHandle->defaultX) {
-						SerialHandle->write_port(ServoHandle->setX(ServoHandle->defaultX));
-						Sleep(camDelay);
-						Console::WriteLine("CAM RIGHT");
-					}
-					SensorHandle->setEyeQuadrant("n");
-				}
-				else if (SensorHandle->getEyeQuadrant() == "n") {
-				};
-				Sleep(10);
+			else if (SensorHandle->getEyeQuadrant() == "w") {//cam up
+				Console::WriteLine("CAM UP");
+				SerialHandle->write_port(ServoHandle->tilt((int)round(-camSpeed)));
+				Sleep(camDelay);
 			}
-
+			if (SensorHandle->getEyeQuadrant() == "s") {//cam down
+				Console::WriteLine("CAM DOWN");
+				SerialHandle->write_port(ServoHandle->tilt((int)round(+camSpeed)));
+				Sleep(camDelay);
+			}
+			if (SensorHandle->getEyeQuadrant() == "a") {//cam left
+				Console::WriteLine("CAM LEFT");
+				SerialHandle->write_port(ServoHandle->pan((int)round(-camSpeed)));
+				Sleep(camDelay);
+			}
+			if (SensorHandle->getEyeQuadrant() == "d") {//cam right
+				Console::WriteLine("CAM RIGHT");
+				SerialHandle->write_port(ServoHandle->pan((int)round(+camSpeed)));
+				Sleep(camDelay);
+			}
+			else if (SensorHandle->getEyeQuadrant() == "n") {
+			};
+			Sleep(10);
+		
 		}
 
 	}
@@ -452,11 +362,15 @@ void Mode2RealTimeControl(){
 *MODE3:assisted handsfree
 ***********************************************************/
 void Mode3AssistedControl() {
-	Console::WriteLine("welcome to mode3! We need more coffee and time");
+	Console::WriteLine("\Entering Mode3: Assisted control");
+	Console::WriteLine("\tEnable sonar sensor");
+	Console::WriteLine("\tEnable EEG confirmation signal");
+	Console::WriteLine("\tStare at an object and concentrate");
+
 
 	/*procedure (basic version)
 		0.Initialization
-			1.camera reset to a fixed angle
+			1.camera reset to default position
 		1.user:
 			1.EYE observe screen
 			2.EEG confirm eye gaze
@@ -464,54 +378,86 @@ void Mode3AssistedControl() {
 		2.Rover:
 			1.receive angle
 			2.rotate according to angle
-		3.User:
-			1.EEG to move forward;
-		4.
-		5.
-	
+			3.move forward using distance provided by sonar
 	*/
 
-
 	while (ModeHandle->getMode() == 3) {
-		int angle = SensorHandle->getEyeAngle();
-		int posX = ServoState::defaultX + angle;
+		/******************************handle mode change: modeX => mode3******************************/
+		if (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {//Key T or gamepadX or GyroY
 
-		//SerialHandle->write_port(ServoHandle->setX(posX));
-		Sleep(50);
+			//Reset camera to center
+			SerialHandle->write_port(ServoHandle->setX(ServoHandle->initX));
+			SerialHandle->write_port(ServoHandle->setY(ServoHandle->maxY));
+			Sleep(300);
+			Console::WriteLine("\t\tCAM Reset");
+		}
+
+		/******************************Cam follows eye movement******************************/
+		int camDelay = 50;
+		int camSpeed = 1;
+
+		if (SensorHandle->getGyroXChange() == 1) {//cam sweep: head horizontal movement
+			Console::WriteLine("Camera sweep");
+			SerialHandle->write_port(ServoHandle->sweep());
+			SensorHandle->setGyroXChange(0);
+			Sleep(4000);
+		}
+		else if (SensorHandle->getEyeQuadrant() == "w") {//cam up
+			Console::WriteLine("CAM UP");
+			SerialHandle->write_port(ServoHandle->tilt((int)round(-camSpeed)));
+			Sleep(camDelay);
+		}
+		if (SensorHandle->getEyeQuadrant() == "s") {//cam down
+			Console::WriteLine("CAM DOWN");
+			SerialHandle->write_port(ServoHandle->tilt((int)round(+camSpeed)));
+			Sleep(camDelay);
+		}
+		if (SensorHandle->getEyeQuadrant() == "a") {//cam left
+			Console::WriteLine("CAM LEFT");
+			SerialHandle->write_port(ServoHandle->pan((int)round(-camSpeed)));
+			Sleep(camDelay);
+		}
+		if (SensorHandle->getEyeQuadrant() == "d") {//cam right
+			Console::WriteLine("CAM RIGHT");
+			SerialHandle->write_port(ServoHandle->pan((int)round(+camSpeed)));
+			Sleep(camDelay);
+		}
+		else if (SensorHandle->getEyeQuadrant() == "n") {
+		};
+		Sleep(10);
+
+
+		/******************************Execute assisted manuevers******************************/
+		//get EEG confirmation
+		if (GetAsyncKeyState(0x58) < 0) { //(SensorHandle->getEEGEyebrowChange()) {
+			//determine rotation angle
+			int angleDeltaCurr = ServoHandle->getX() - ServoState::initX;  
+			int rotationDuration = round(abs(angleDeltaCurr / 45.0) * 21);
+
+			SerialHandle->write_port(ServoHandle->setX(ServoHandle->initX));
+
+			//execute camera rotation and rover movement
+			if (angleDeltaCurr > 0) {
+				SerialHandle->write_port(MotorHandle->right(), rotationDuration); 
+				Console::WriteLine("Assisted Rotation: Right");
+				Console::WriteLine("angle: " + angleDeltaCurr);
+			}
+			else {
+				SerialHandle->write_port(MotorHandle->left(), rotationDuration);
+				Console::WriteLine("Assisted Rotation: Left");
+				Console::WriteLine("angle: " + angleDeltaCurr);
+			}
+			Console::WriteLine("duration: " + rotationDuration);
+
+			
+			Sleep(1000);
+			SerialHandle->write_port(MotorHandle->assisted(), 1); //forward with sonar assistance in firmware
+			
+		}
 	}
-
 
 }
 
-
-/***********************************************************
-Fan Services
-***********************************************************/
-void ServoSweep() {
-	int minX = ServoState::minX;
-	int maxX = ServoState::maxX;
-	int minY = ServoState::minY;
-	int maxY = ServoState::maxY;
-	int speed = 6;
-	int delay = 1000;
-
-	SerialHandle->write_port(ServoHandle->reset());
-	Sleep(500);
-	while (1) {
-		cout << "outer loop" << endl;
-		Sleep(delay);
-		while (ServoHandle->getX() > minX) {
-			cout << "pan left:" << ServoHandle->getX() << endl;
-			SerialHandle->write_port(ServoHandle->pan(-speed));
-			Sleep(delay);
-		}
-		while (ServoHandle->getX() < maxX) {
-			cout << "pan right:" << ServoHandle->getX() << endl;
-			SerialHandle->write_port(ServoHandle->pan(speed));
-			Sleep(delay);
-		}
-	}
-}
 
 /***********************************************************
 Mode Management
@@ -536,8 +482,8 @@ void modeControl() {
 			ModeHandle->setMode(3);
 		}
 
-		//update state (if in mode 2: the hands-free mode)
-		if (ModeHandle->getMode() == 2 && (GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed)) { // key T || gamepadX
+		//update state (if in mode 2: the realtime mode)
+		if ( ModeHandle->getMode()==2 && (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed)) { // GyroY || key T || gamepadX
 			SensorHandle->toggleMoveObserveState();
 			Sleep(150);
 		}
@@ -568,7 +514,7 @@ void modeControl() {
 			Console::WriteLine("INFO: Enter MODE3: assited hands-free control");
 			ThreadStart^ mode3AssistedThreadDelegate = gcnew ThreadStart(&Mode3AssistedControl);
 			Thread^ mode3AssistedThread = gcnew Thread(mode3AssistedThreadDelegate);
-			//mode3AssistedThread->Start();
+			mode3AssistedThread->Start();
 			ModeHandle->setChange(0);
 		}
 
@@ -581,17 +527,22 @@ void modeControl() {
 /***********************************************************
 Connection Management
 ***********************************************************/
+int CheckChar(char inChar) {
+	return ((inChar - '!') >= 0);
+}
+
 void serialConnection() {
 	Sleep(1000);
 
 	Console::WriteLine("INFO: Attempt Connecting to Serial Port");
 	if (SerialHandle->open_port()) {
 		//SerialHandle->setup_params();
-		//SerialHandle->timeout();
+		SerialHandle->timeout();
 		Beep(750, 1000);
 	}
 
 	while (1) {
+		std::string inMsg = "";
 		if (GetAsyncKeyState(0x24) < 0) { //Home
 			if (SerialHandle->isConnected()) {
 				Console::WriteLine("INFO: Attempt Closing Serial Port");
@@ -602,12 +553,17 @@ void serialConnection() {
 				Console::WriteLine("INFO: Attempt Connecting to Serial Port");
 				if (SerialHandle->open_port()) {
 					//SerialHandle->setup_params();
-					//SerialHandle->timeout();
+					SerialHandle->timeout();
 					Beep(750, 1000);
 				}
 			}
 			Sleep(150);
 		}
+		else {
+
+			//cout << SerialHandle->read_port();
+		}
+
 		Sleep(100);
 	}
 }
@@ -645,17 +601,15 @@ void UDPReceiveConnection() {
 void UDPSendConnection() {
 
 	UdpClient^ udpClientSend = gcnew UdpClient;
-	//udpClientSend->Connect("138.51.234.242", 2); //BA LAB
-	//udpClientSend->Connect("138.51.224.231", 2);
-	udpClientSend->Connect("100.64.215.76", 2);
-	//udpClientSend->Connect("localhost",2);
+	//udpClientSend->Connect("100.64.215.76", 2);
+	udpClientSend->Connect("192.168.0.108", 2);
 	while (1) { 
 		//trigger if a change in mode
 		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {
 			Sleep(300);
 			array<Byte>^sendBytes = Encoding::ASCII->GetBytes("M" + ModeHandle->getMode() + ";");
 			udpClientSend->Send(sendBytes, sendBytes->Length);
-			//Console::WriteLine("Mode Change Sent");
+			Console::WriteLine("\t\tMode Change Sent");
 		}
 		Sleep(100);
 	}
@@ -669,7 +623,7 @@ void gamepadControl() {
 	while (1) {
 		GamepadHandle.update();
 
-		//vibrate on mode change
+		//vibratation: abxy button
 		if (GamepadHandle.a_button_pressed || GamepadHandle.b_button_pressed || GamepadHandle.x_button_pressed || GamepadHandle.y_button_pressed)
 			GamepadHandle.vibrate(2);
 

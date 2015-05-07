@@ -75,11 +75,11 @@ int BtSerial::setup_params() {
 int BtSerial::timeout() {
 
 	COMMTIMEOUTS timeouts = { 0 };
-	timeouts.ReadIntervalTimeout = 50;
-	timeouts.ReadTotalTimeoutConstant = 50;
-	timeouts.ReadTotalTimeoutMultiplier = 10;
-	timeouts.WriteTotalTimeoutConstant = 50;
-	timeouts.WriteTotalTimeoutMultiplier = 10;
+	timeouts.ReadIntervalTimeout = 1;
+	timeouts.ReadTotalTimeoutConstant = 1;
+	timeouts.ReadTotalTimeoutMultiplier = 1;
+	timeouts.WriteTotalTimeoutConstant = 1;
+	timeouts.WriteTotalTimeoutMultiplier = 1;
 	if (!SetCommTimeouts(serialPort, &timeouts)){
 		printf("\tError: cannot set serial port timeout! \n");
 		return 0;
@@ -145,10 +145,30 @@ DWORD BtSerial::write_port(std::string inStr, int times) {
 }
 
 
-
+//overload this with single bit reading(see arduino code for reference)
 DWORD BtSerial::read_port(){
-	DWORD bytesReaded = 0;
-	return bytesReaded;
+	const int size_buff = 20;
+	char buffer[size_buff + 1];
+	buffer[size_buff+1] =  0 ;
+	DWORD dwBytesRead = 0;
+	if (!ReadFile(serialPort, buffer, size_buff, &dwBytesRead, NULL)){
+		printf("\tError: cannot reading from serial port! \n");
+	}
+
+		cout << buffer;
+	
+	return dwBytesRead;
+}
+
+char BtSerial::read_port_byte(){
+	const int size_buff = 1;
+	char buffer[size_buff];
+	DWORD dwBytesRead = 0;
+	if (!ReadFile(serialPort, buffer, size_buff, &dwBytesRead, NULL)){
+		//printf("\tError: cannot reading from serial port! \n");
+	}
+
+	return buffer[0];
 }
 
 void BtSerial::close_port() {

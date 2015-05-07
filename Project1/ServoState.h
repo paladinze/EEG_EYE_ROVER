@@ -3,9 +3,6 @@
 #include <string>
 #include <algorithm>
 
-#define INITIAL_X 95
-#define INITIAL_Y 30
-
 const std::string TYPE = "S";
 const std::string DELIMETER = ",";
 const std::string ENDMSG = ";";
@@ -15,18 +12,18 @@ class ServoState
 {
 private:
 	//current state
-	int posX = INITIAL_X;
-	int posY = INITIAL_Y;
+	int posX = initX;
+	int posY = initY;
 
 public:
-	//servo operating range
-	static const int maxX = 165;
-	static const int minX = 25;
-	static const int maxY = 70; //exclusive
-	static const int minY = 10; //exclusive
-	static const int defaultX = 95;
-	static const int defaultY = 30;
+	//max range for roration
+	static const int maxX = 140;
+	static const int initX = 100;
+	static const int minX = 60;
 
+	static const int maxY = 110;
+	static const int initY = 85;
+	static const int minY = 75;
 
 	ServoState();
 	~ServoState();

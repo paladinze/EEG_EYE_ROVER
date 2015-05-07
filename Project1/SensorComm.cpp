@@ -15,6 +15,12 @@ void SensorComm::toggleMoveObserveState() { moveObserveState = (moveObserveState
 //Get
 int SensorComm::getMoveObserveState(){ return moveObserveState; }
 
+int SensorComm::getGyroX() { return gyXCurr; }
+int SensorComm::getGyroXChange() { return gyXChange; }
+
+int SensorComm::getGyroY() { return gyYCurr; }
+int SensorComm::getGyroYChange() { return gyYChange; }
+
 int SensorComm::getEEGTeeth(){ return eegTeethCurr; }
 int SensorComm::getEEGTeethChange() { return eegTeethChange; }
 
@@ -41,6 +47,12 @@ int SensorComm::getEyeAngle(){ return eyeAngle; }
 
 //Set
 void SensorComm::setMoveObserveState(int val){ moveObserveState = val; }
+
+void SensorComm::setGyroX(int val) { gyXCurr = val; }
+void SensorComm::setGyroXChange(int val) { gyXChange = val; }
+
+void SensorComm::setGyroY(int val) { gyYCurr = val; }
+void SensorComm::setGyroYChange(int val) { gyYChange = val; }
 
 void SensorComm::setEEGPull(int val){ eegPullCurr = val; }
 void SensorComm::setEEGPullChange(int val){ eegPullChange = val; }
@@ -97,7 +109,7 @@ void SensorComm::setState(std::string msg){
 			else if (dataType == "B") {//EEG:Eyebrow
 				int inEyebrow = std::stoi(data);
 				if (inEyebrow == 1 && eegEyebrowCurr == 0) {
-					moveObserveState = (moveObserveState + 1) % 2;
+					//moveObserveState = (moveObserveState + 1) % 2; eyebrow is no longer used for state switching
 					eegEyebrowChange = 1;
 				}
 				else {
@@ -106,7 +118,7 @@ void SensorComm::setState(std::string msg){
 				eegEyebrowPrev = eegEyebrowCurr;
 				eegEyebrowCurr = inEyebrow;
 			}
-			else if (dataType == "P") {
+			else if (dataType == "P") {//EEG:Push
 				int inPush = std::stoi(data);
 				if (inPush == 1 && eegPushCurr == 0) {
 					eegPushChange = 1;
@@ -117,7 +129,7 @@ void SensorComm::setState(std::string msg){
 				eegPushPrev = eegPushCurr;
 				eegPushCurr = inPush;
 			}
-			else if (dataType == "L") {
+			else if (dataType == "L") {//EEG:Pull
 				int inPull = std::stoi(data);
 				if (inPull == 1 && eegPullCurr == 0) {
 					eegPullChange = 1;
@@ -151,10 +163,36 @@ void SensorComm::setState(std::string msg){
 			else if (dataType == "L"){//EYE:data lost
 				eyeActive = 0;
 			}
+		} 
+		else if (srcDevice == "G") {//From gyro
+			if (dataType == "X") {//X
+				int inGyroX = std::stoi(data);
+				if (inGyroX == 1 && gyXCurr == 0) {
+					gyXChange = 1;
+				}
+				else {
+					gyXChange = 0;
+				}
+				gyXPre = gyXCurr;
+				gyXCurr = inGyroX;
+			}
+			if (dataType == "Y") {//Y
+				int inGyroY = std::stoi(data);
+				if (inGyroY == 1 && gyYCurr == 0) {
+					gyYChange = 1;
+					moveObserveState = (moveObserveState + 1) % 2; // toggle state
+				}
+				else {
+					gyYChange = 0;
+				}
+				gyYPre = gyYCurr;
+				gyYCurr = inGyroY;
+			}
 		}
+			/*
 		else {
 			eyeActive = 0;
-		}
+		}*/
 		//std::cout << "Quadrant set to: " << eyeQuadrant << std::endl;
 	}
 	else {

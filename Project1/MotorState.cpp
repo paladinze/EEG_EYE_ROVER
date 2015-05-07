@@ -20,3 +20,7 @@ std::string MotorState::left() {
 std::string MotorState::right() {
 	return (TYPE + "d" + ENDMSG);
 }
+
+std::string MotorState::assisted() {
+	return (TYPE + "x" + ENDMSG);
+}

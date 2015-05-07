@@ -33,6 +33,7 @@ public:
 	DWORD write_port(std::string); //write cmd to port
 	DWORD write_port(std::string, int); // write the same cmd multiple times
 	DWORD read_port(); // read from port
+	char read_port_byte();
 	void close_port(); // close handle
 	int isConnected();
 	void setState(int);

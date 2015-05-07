@@ -19,6 +19,7 @@ public:
 	std::string backward();
 	std::string left();
 	std::string right();
+	std::string assisted();
 	
 };
 

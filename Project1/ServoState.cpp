@@ -10,7 +10,7 @@ ServoState::~ServoState()
 
 //reset
 std::string ServoState::reset(){
-	return ServoState::translate(INITIAL_X, INITIAL_Y);
+	return ServoState::translate(initX, initY);
 }
 
 std::string ServoState::sweep(){
