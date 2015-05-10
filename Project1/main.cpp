@@ -262,23 +262,24 @@ void Mode2RealTimeControl(){
 	Console::WriteLine("\tEntering defualt state: observation state");
 
 	while (ModeHandle->getMode() == 2) {
-		/******************************handle mode change: modeX => mode2******************************/
-		if (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {//Key T or gamepadX or GyroY
+		/******************************handle state change******************************/
+		if (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {//GyroY || KeyT || GamepadX
 
 			//Reset camera to look down
 			SerialHandle->write_port(ServoHandle->setX(ServoHandle->initX));
 			SerialHandle->write_port(ServoHandle->setY(ServoHandle->maxY));
-			Sleep(300);
 			Console::WriteLine("\t\tCAM Reset");
 
-			//Print current state
+			//Set State Change
+			SensorHandle->toggleMoveObserveState();
+			SensorHandle->setGyroYChange(0);
 			if (SensorHandle->getMoveObserveState() == 0){
 				Console::WriteLine("\tEntering observation state");
 			}
-			else {
+			else if (SensorHandle->getMoveObserveState() == 1){
 				Console::WriteLine("\tEntering movement state");
 			}
-			SensorHandle->setGyroYChange(0);
+			Sleep(500);
 		}
 
 		/******************************handle state: movement state******************************/ //(motor and servo needs adjust)
@@ -383,6 +384,8 @@ void Mode3AssistedControl() {
 
 	while (ModeHandle->getMode() == 3) {
 		/******************************handle mode change: modeX => mode3******************************/
+
+		/*
 		if (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed) {//Key T or gamepadX or GyroY
 
 			//Reset camera to center
@@ -391,7 +394,7 @@ void Mode3AssistedControl() {
 			Sleep(300);
 			Console::WriteLine("\t\tCAM Reset");
 		}
-
+		*/
 		/******************************Cam follows eye movement******************************/
 		int camDelay = 50;
 		int camSpeed = 1;
@@ -429,7 +432,7 @@ void Mode3AssistedControl() {
 
 		/******************************Execute assisted manuevers******************************/
 		//get EEG confirmation
-		if (GetAsyncKeyState(0x58) < 0) { //(SensorHandle->getEEGEyebrowChange()) {
+		if (GetAsyncKeyState(0x58) < 0 || SensorHandle->getEEGEyebrowChange() ||GamepadHandle.x_button_pressed) {
 			//determine rotation angle
 			int angleDeltaCurr = ServoHandle->getX() - ServoState::initX;  
 			int rotationDuration = round(abs(angleDeltaCurr / 45.0) * 21);
@@ -452,6 +455,7 @@ void Mode3AssistedControl() {
 			
 			Sleep(1000);
 			SerialHandle->write_port(MotorHandle->assisted(), 1); //forward with sonar assistance in firmware
+			Sleep(500);
 			
 		}
 	}
@@ -466,7 +470,7 @@ void modeControl() {
 	int started = 0;
 
 	while (1) {
-		//update mode
+		//Update mode on user input
 		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {//Toggle Mode: (tab) || EEG_Attention 
 			ModeHandle->toggleMode();
 			SensorHandle->setEEGAttentionChange(0);
@@ -482,13 +486,7 @@ void modeControl() {
 			ModeHandle->setMode(3);
 		}
 
-		//update state (if in mode 2: the realtime mode)
-		if ( ModeHandle->getMode()==2 && (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed)) { // GyroY || key T || gamepadX
-			SensorHandle->toggleMoveObserveState();
-			Sleep(150);
-		}
-
-		//Mode Switching
+		//Execute the chosen mode
 		if (!started || (ModeHandle->getChange() && ModeHandle->getMode() == 1)) {
 			/***********************MODE1: Real-time keyboard control*************************/
 			Console::WriteLine("INFO: Enter MODE1: real-time keyboard control");
@@ -601,16 +599,34 @@ void UDPReceiveConnection() {
 void UDPSendConnection() {
 
 	UdpClient^ udpClientSend = gcnew UdpClient;
-	//udpClientSend->Connect("100.64.215.76", 2);
-	udpClientSend->Connect("192.168.0.108", 2);
+	udpClientSend->Connect("100.64.219.194", 2);
+	//udpClientSend->Connect("192.168.0.108", 2);
 	while (1) { 
 		//trigger if a change in mode
-		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1)) {
+		if ((GetAsyncKeyState(0x09) < 0) || (SensorHandle->getEEGAttentionChange() == 1) 
+			|| GamepadHandle.a_button_pressed || GamepadHandle.b_button_pressed || GamepadHandle.y_button_pressed
+			|| GetAsyncKeyState(0x31)<0 || GetAsyncKeyState(0x32)<0 || GetAsyncKeyState(0x33)<0) {
 			Sleep(300);
 			array<Byte>^sendBytes = Encoding::ASCII->GetBytes("M" + ModeHandle->getMode() + ";");
 			udpClientSend->Send(sendBytes, sendBytes->Length);
 			Console::WriteLine("\t\tMode Change Sent");
 		}
+
+		//trigger if toggle state (if in mode 2: the realtime mode)
+		if (ModeHandle->getMode() == 2 && (SensorHandle->getGyroYChange() == 1 || GetAsyncKeyState(0x54) < 0 || GamepadHandle.x_button_pressed)) { // GyroY || key T || gamepadX
+			Sleep(200);
+			if (SensorHandle->getMoveObserveState() == 0){
+				array<Byte>^sendBytes = Encoding::ASCII->GetBytes("S" + "0" + ";");
+				udpClientSend->Send(sendBytes, sendBytes->Length);
+			}
+			else if (SensorHandle->getMoveObserveState() == 1){
+				array<Byte>^sendBytes = Encoding::ASCII->GetBytes("S" + "1" + ";");
+				udpClientSend->Send(sendBytes, sendBytes->Length);
+			}
+			Console::WriteLine("\t\State Change Sent");
+		}
+
+
 		Sleep(100);
 	}
 	
@@ -674,8 +690,6 @@ int main(int argc, char **argv) {
 	Console::WriteLine("Exit Happily");
 
 	return 0;
-
-
 
 }
 

@@ -180,7 +180,6 @@ void SensorComm::setState(std::string msg){
 				int inGyroY = std::stoi(data);
 				if (inGyroY == 1 && gyYCurr == 0) {
 					gyYChange = 1;
-					moveObserveState = (moveObserveState + 1) % 2; // toggle state
 				}
 				else {
 					gyYChange = 0;
@@ -189,11 +188,6 @@ void SensorComm::setState(std::string msg){
 				gyYCurr = inGyroY;
 			}
 		}
-			/*
-		else {
-			eyeActive = 0;
-		}*/
-		//std::cout << "Quadrant set to: " << eyeQuadrant << std::endl;
 	}
 	else {
 		std::cout << "invalid message" << std::endl;
